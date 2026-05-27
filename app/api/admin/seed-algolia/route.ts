@@ -4,10 +4,17 @@ import { MOCK_CREATORS } from "@/data/mock-creators";
 
 export async function GET(request: Request) {
   try {
-    const adminClient = algoliasearch(
-      process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-      process.env.ALGOLIA_ADMIN_KEY!
-    );
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const adminKey = process.env.ALGOLIA_ADMIN_KEY;
+    
+    if (!appId || !adminKey) {
+      return NextResponse.json({
+        success: false,
+        error: "Algolia environment variables (NEXT_PUBLIC_ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY) are missing."
+      }, { status: 400 });
+    }
+
+    const adminClient = algoliasearch(appId, adminKey);
 
     // Format the creators for Algolia (requires objectID)
     const objectsToSave = MOCK_CREATORS.map((creator) => ({

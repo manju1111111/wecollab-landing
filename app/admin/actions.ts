@@ -6,10 +6,21 @@ import { algoliasearch } from "algoliasearch";
 import { redirect } from "next/navigation";
 import { CREATOR_CATEGORIES } from "@/data/creator-categories";
 
-const algoliaClient = algoliasearch(
-  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-  process.env.ALGOLIA_ADMIN_KEY!
-);
+let _algoliaClient: ReturnType<typeof algoliasearch> | null = null;
+
+function getAlgoliaClient() {
+  if (!_algoliaClient) {
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const adminKey = process.env.ALGOLIA_ADMIN_KEY;
+    
+    if (!appId || !adminKey) {
+      throw new Error("Algolia credentials (NEXT_PUBLIC_ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY) are missing in environment variables.");
+    }
+    
+    _algoliaClient = algoliasearch(appId, adminKey);
+  }
+  return _algoliaClient;
+}
 
 const INDEX_NAME = "creators";
 
@@ -82,6 +93,7 @@ export async function createCreatorAction(formData: FormData) {
   }
 
   // 2. Sync to Algolia
+  const algoliaClient = getAlgoliaClient();
   await algoliaClient.saveObject({
     indexName: INDEX_NAME,
     body: {
@@ -148,6 +160,7 @@ export async function updateCreatorAction(id: string, formData: FormData) {
   }
 
   // 2. Partial Update in Algolia
+  const algoliaClient = getAlgoliaClient();
   await algoliaClient.partialUpdateObject({
     indexName: INDEX_NAME,
     objectID: id,
@@ -179,6 +192,7 @@ export async function deleteCreatorAction(id: string) {
     throw new Error(error.message);
   }
 
+  const algoliaClient = getAlgoliaClient();
   await algoliaClient.deleteObject({
     indexName: INDEX_NAME,
     objectID: id,

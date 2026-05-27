@@ -20,10 +20,21 @@ export type SearchResult = {
   totalPages: number;
 };
 
-const client = algoliasearch(
-  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-  process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY!
-);
+let _client: ReturnType<typeof algoliasearch> | null = null;
+
+function getClient() {
+  if (!_client) {
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const searchKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
+    
+    if (!appId || !searchKey) {
+      throw new Error("Algolia keys (NEXT_PUBLIC_ALGOLIA_APP_ID, NEXT_PUBLIC_ALGOLIA_SEARCH_KEY) are missing in environment variables.");
+    }
+    
+    _client = algoliasearch(appId, searchKey);
+  }
+  return _client;
+}
 
 const INDEX_NAME = "creators";
 
@@ -61,6 +72,7 @@ export const searchEngine = {
     }
 
     // Algolia v5 structure
+    const client = getClient();
     const response = await client.searchSingleIndex({
       indexName: INDEX_NAME,
       searchParams: {
@@ -104,11 +116,14 @@ export const searchEngine = {
   },
 
   updateObject: async (id: string, updates: Partial<Creator>): Promise<boolean> => {
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const adminKey = process.env.ALGOLIA_ADMIN_KEY;
+    if (!appId || !adminKey) {
+      throw new Error("Algolia admin keys (NEXT_PUBLIC_ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY) are missing in environment variables.");
+    }
+    
     // Requires Admin API Key
-    const adminClient = algoliasearch(
-      process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-      process.env.ALGOLIA_ADMIN_KEY!
-    );
+    const adminClient = algoliasearch(appId, adminKey);
 
     await adminClient.partialUpdateObject({
       indexName: INDEX_NAME,
