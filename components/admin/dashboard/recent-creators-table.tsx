@@ -29,6 +29,7 @@ export function RecentCreatorsTable({ creators }: { creators: any[] }) {
               <th className="py-4 px-6 text-right"></th>
             </tr>
           </thead>
+          <tbody>
             {data.length > 0 ? data.map((c, i) => (
               <tr key={i} className="hover:bg-slate-50 transition-colors group cursor-pointer">
                 <td className="py-4 px-6">
