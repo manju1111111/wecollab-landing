@@ -30,52 +30,54 @@ export function RecentCreatorsTable({ creators }: { creators: any[] }) {
             </tr>
           </thead>
           <tbody>
-            {data.length > 0 ? data.map((c, i) => (
-              <tr key={i} className="hover:bg-slate-50 transition-colors group cursor-pointer">
-                <td className="py-4 px-6">
-                  <div className="flex items-center gap-3">
-                    <div className="relative h-10 w-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                      <Image src={c.profile_image || `https://i.pravatar.cc/150?u=${c.username || i}`} alt={c.name} fill className="object-cover" />
-                    </div>
-                    <div>
-                      <div className="text-[14px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                        {c.name}
+            {data.length > 0 ? (
+              data.map((c, i) => (
+                <tr key={i} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-10 w-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                        <Image src={c.profile_image || `https://i.pravatar.cc/150?u=${c.username || i}`} alt={c.name} fill className="object-cover" />
                       </div>
-                      <div className="text-[12px] font-medium text-slate-500">
-                        @{c.username}
+                      <div>
+                        <div className="text-[14px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          {c.name}
+                        </div>
+                        <div className="text-[12px] font-medium text-slate-500">
+                          @{c.username}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="py-4 px-6">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
-                    {c.platform || "Instagram"}
-                  </span>
-                </td>
-                <td className="py-4 px-6">
-                  <div className="flex flex-col">
-                    <span className="text-[14px] font-bold text-slate-900">{c.followers || 0} <span className="text-[11px] text-slate-400 font-medium">followers</span></span>
-                    <span className="text-[12px] font-bold text-emerald-600">{c.engagement_rate || c.er || 0}% ER</span>
-                  </div>
-                </td>
-                <td className="py-4 px-6">
-                  <div className="flex items-center gap-1.5">
-                    {(c.verification_status || c.status) === "Verified" && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
-                    {(c.verification_status || c.status) === "Pending Verification" && <div className="h-2 w-2 rounded-full bg-amber-400" />}
-                    {(c.verification_status || c.status) === "Rejected" && <div className="h-2 w-2 rounded-full bg-rose-500" />}
-                    <span className={`text-[12px] font-bold ${
-                      (c.verification_status || c.status) === "Verified" ? "text-emerald-700" : 
-                      (c.verification_status || c.status) === "Pending Verification" ? "text-amber-700" : "text-rose-700"
-                    }`}>{c.verification_status || c.status || 'Draft'}</span>
-                  </div>
-                </td>
-                <td className="py-4 px-6 text-right">
-                  <button className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </button>
-                </td>
-              </tr>
-            )) : (
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
+                      {c.platform || "Instagram"}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex flex-col">
+                      <span className="text-[14px] font-bold text-slate-900">{c.followers || 0} <span className="text-[11px] text-slate-400 font-medium">followers</span></span>
+                      <span className="text-[12px] font-bold text-emerald-600">{c.engagement_rate || c.er || 0}% ER</span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-1.5">
+                      {(c.verification_status || c.status) === "Verified" && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
+                      {(c.verification_status || c.status) === "Pending Verification" && <div className="h-2 w-2 rounded-full bg-amber-400" />}
+                      {(c.verification_status || c.status) === "Rejected" && <div className="h-2 w-2 rounded-full bg-rose-500" />}
+                      <span className={`text-[12px] font-bold ${
+                        (c.verification_status || c.status) === "Verified" ? "text-emerald-700" : 
+                        (c.verification_status || c.status) === "Pending Verification" ? "text-amber-700" : "text-rose-700"
+                      }`}>{c.verification_status || c.status || 'Draft'}</span>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <button className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
               <tr>
                 <td colSpan={5} className="py-12 text-center text-slate-500 text-[13px] font-medium">
                   No recent creators found. Import a CSV to get started.
