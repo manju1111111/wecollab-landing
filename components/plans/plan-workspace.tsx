@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, MoreHorizontal, Download, MessageSquare, Plus, Check } from "lucide-react";
+import { ChevronLeft, MoreHorizontal, Download, MessageSquare, Plus, Check, X } from "lucide-react";
 import { CreateListModal } from "./create-list-modal";
 import { ColumnsModal, ColumnCategory } from "./columns-modal";
 import Image from "next/image";
 import Link from "next/link";
-import { mockCreators } from "@/data/mock-creators";
 
 // The categories matching the screenshots
 const initialCategories: ColumnCategory[] = [

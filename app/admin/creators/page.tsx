@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AdminTopFilters, AdminFilterState } from "@/components/admin/creators/admin-top-filters";
 import { CreatorDataGrid } from "@/components/admin/creators/creator-data-grid";
@@ -8,7 +8,7 @@ import { QuickPreviewDrawer } from "@/components/admin/creators/quick-preview-dr
 import { AddCreatorModal } from "@/components/admin/creators/add-creator-modal";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AdminCreatorsPage() {
+function AdminCreatorsInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -216,5 +216,17 @@ export default function AdminCreatorsPage() {
         onSubmit={handleAddSubmit}
       />
     </div>
+  );
+}
+
+export default function AdminCreatorsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full min-h-screen items-center justify-center bg-[#f8fafc]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+      </div>
+    }>
+      <AdminCreatorsInner />
+    </Suspense>
   );
 }
