@@ -41,7 +41,7 @@ const INDEX_NAME = "creators";
 export const searchEngine = {
   search: async (filters: SearchFilters): Promise<SearchResult> => {
     const page = filters.page ? filters.page - 1 : 0;
-    const hitsPerPage = filters.limit || 5;
+    const hitsPerPage = filters.limit || 20;
 
     // Build Facet Filters
     // GOLDEN RULE: Strict Backend Filtering for Discovery Page

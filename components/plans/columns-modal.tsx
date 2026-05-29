@@ -56,7 +56,7 @@ export function ColumnsModal({
                   <h3 className="text-[15px] font-bold text-slate-800">{category.title}</h3>
                   <button 
                     onClick={() => onToggleCategory(category.id, !allSelected)}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold text-orange-500 hover:bg-orange-50 transition border border-orange-200"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold text-primary hover:bg-primary-soft/30 transition border border-primary/20"
                   >
                     <Check className="h-3 w-3" strokeWidth={3} />
                     {allSelected ? "Deselect All" : "Select All"}

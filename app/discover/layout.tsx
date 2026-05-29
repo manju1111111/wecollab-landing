@@ -67,7 +67,7 @@ export default function DiscoverLayout({ children }: { children: ReactNode }) {
           <button className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white transition-colors hover:bg-slate-700">
             M
           </button>
-          <div className="text-[10px] font-bold text-orange-400">28.4k</div>
+          <div className="text-[10px] font-bold text-violet-400">28.4k</div>
         </div>
       </aside>
 

@@ -2,8 +2,234 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, CheckCircle2, Heart, Eye, Activity, ExternalLink, BarChart3, TrendingUp } from "lucide-react";
-import Image from "next/image";
 import { Creator } from "@/data/mock-creators";
+import { useState, useEffect } from "react";
+
+import { sanitizeImageSrc, getInitials, resolveCreatorImage } from "@/lib/avatar-utils";
+
+// ─── RadarChart Pentagon Component ───────────────────────────────────────────
+const RadarChart = () => {
+  const reach = 82;
+  const authenticity = 92;
+  const pricing = 78;
+  const niche = 95;
+  const er = 85;
+
+  const cx = 80;
+  const cy = 80;
+  const r = 50;
+
+  const getPoints = (scale: number) => {
+    return [0, 72, 144, 216, 288].map(deg => {
+      const rad = (deg * Math.PI) / 180 - Math.PI / 2;
+      const x = cx + r * scale * Math.cos(rad);
+      const y = cy + r * scale * Math.sin(rad);
+      return `${x},${y}`;
+    }).join(" ");
+  };
+
+  const getActivePoints = () => {
+    const scores = [reach, authenticity, pricing, niche, er];
+    return [0, 72, 144, 216, 288].map((deg, idx) => {
+      const rad = (deg * Math.PI) / 180 - Math.PI / 2;
+      const dist = r * (scores[idx] / 100);
+      const x = cx + dist * Math.cos(rad);
+      const y = cy + dist * Math.sin(rad);
+      return `${x},${y}`;
+    }).join(" ");
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
+      <div className="w-[120px] h-[120px] relative shrink-0">
+        <svg className="w-full h-full" viewBox="0 0 160 160">
+          <polygon points={getPoints(1.0)} fill="transparent" stroke="#e2e8f0" strokeWidth="1" />
+          <polygon points={getPoints(0.75)} fill="transparent" stroke="#f1f5f9" strokeWidth="1" />
+          <polygon points={getPoints(0.5)} fill="transparent" stroke="#f8fafc" strokeWidth="1" />
+          
+          {[0, 72, 144, 216, 288].map(deg => {
+            const rad = (deg * Math.PI) / 180 - Math.PI / 2;
+            return (
+              <line key={deg} x1={cx} y1={cy} x2={cx + r * Math.cos(rad)} y2={cy + r * Math.sin(rad)} stroke="#e2e8f0" strokeWidth="1" />
+            );
+          })}
+          
+          <polygon points={getActivePoints()} fill="rgba(124, 58, 237, 0.12)" stroke="#7c3aed" strokeWidth="2" strokeLinejoin="round" />
+          
+          {getActivePoints().split(" ").map((pt, i) => {
+            const [x, y] = pt.split(",");
+            return (
+              <circle key={i} cx={x} cy={y} r="3" fill="#7c3aed" />
+            );
+          })}
+        </svg>
+      </div>
+      <div className="flex-1 space-y-1 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+        <div className="flex items-center justify-between border-b border-slate-50 pb-1 mb-1">
+          <span className="text-slate-800">🎯 Fit Index</span>
+          <span className="text-primary font-black">90%</span>
+        </div>
+        <div className="space-y-0.5 text-[9px] font-bold text-slate-400 normal-case">
+          <div className="flex justify-between"><span>Reach Index</span><span className="text-slate-700">82%</span></div>
+          <div className="flex justify-between"><span>Authenticity</span><span className="text-slate-700">92%</span></div>
+          <div className="flex justify-between"><span>Cost Efficiency</span><span className="text-slate-700">78%</span></div>
+          <div className="flex justify-between"><span>Niche Depth</span><span className="text-slate-700">95%</span></div>
+          <div className="flex justify-between"><span>Engagement</span><span className="text-slate-700">85%</span></div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── RecentPostsGallery Component ─────────────────────────────────────────────
+const RecentPostsGallery = ({ category }: { category: string }) => {
+  const images = {
+    Food: [
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=150&h=150&fit=crop&q=80"
+    ],
+    Fashion: [
+      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=150&h=150&fit=crop&q=80"
+    ],
+    Tech: [
+      "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1588508065123-287b28e013da?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=150&h=150&fit=crop&q=80"
+    ],
+    Travel: [
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=150&h=150&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=150&h=150&fit=crop&q=80"
+    ]
+  } as Record<string, string[]>;
+
+  const defaultImages = [
+    "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&h=150&fit=crop&q=80"
+  ];
+
+  const pool = images[category] || defaultImages;
+
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {pool.map((src, i) => (
+        <div key={src + i} className="group/post relative aspect-square overflow-hidden rounded-xl bg-slate-100 shadow-sm border border-slate-150">
+          <img src={src} alt="Recent post" className="h-full w-full object-cover transition duration-300 group-hover/post:scale-105" loading="lazy" referrerPolicy="no-referrer" />
+          <div className="absolute inset-0 bg-slate-950/45 opacity-0 group-hover/post:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-black text-white gap-1 select-none pointer-events-none">
+            <span className="flex items-center gap-1">❤️ {Math.floor(25 + Math.random() * 40)}k</span>
+            <span className="flex items-center gap-1">💬 {Math.floor(100 + Math.random() * 300)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── PitchComposerCard Component ─────────────────────────────────────────────
+const PitchComposerCard = ({ creatorName }: { creatorName: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const pitchText = `Hi ${creatorName},\n\nHope you are doing great! I'm reaching out from WeCollab. We love your creative style and alignment with our client's upcoming brand campaign. We think you'd be a perfect fit.\n\nLet us know if you'd be open to discussing a collaboration blueprint!\n\nBest regards,\nCampaign Curation Team\nWeCollab`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(pitchText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="bg-[#fcfdff] rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-wider">⚡ outreach pitch composer</h4>
+        <button
+          onClick={handleCopy}
+          className="text-[10px] font-bold text-primary hover:text-primary-hover border border-primary/20 hover:bg-primary-soft px-2.5 py-0.5 rounded-lg transition cursor-pointer"
+        >
+          {copied ? "Copied! ✓" : "Copy Pitch Template"}
+        </button>
+      </div>
+      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 text-[11px] text-slate-500 font-mono leading-relaxed max-h-24 overflow-y-auto whitespace-pre-wrap select-all no-scrollbar">
+        {pitchText}
+      </div>
+    </div>
+  );
+};
+
+// ─── CreatorAvatarPanel ───────────────────────────────────────────────────────
+// Hardened panel-size avatar (96×96) with:
+//  • HTTPS enforcement + base64 rejection via sanitizeImageSrc
+//  • Lazy loading + async decoding
+//  • Broken-image infinite retry prevention
+//  • Deterministic gradient fallback keyed to creator name
+//  • referrerPolicy="no-referrer" for Instagram CDN CORS
+function CreatorAvatarPanel({ src, name, className = "h-24 w-24" }: { src?: string; name: string; className?: string }) {
+  const safeSrc = sanitizeImageSrc(src);
+  const [loadedSrc, setLoadedSrc] = useState(safeSrc);
+  const [error, setError] = useState(false);
+
+  // Reset ONLY when src actually changes — prevents infinite retry loops
+  useEffect(() => {
+    const nextSafe = sanitizeImageSrc(src);
+    if (nextSafe !== loadedSrc) {
+      setLoadedSrc(nextSafe);
+      setError(false);
+    }
+  }, [src]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const initials = getInitials(name);
+
+  const colorClasses = [
+    "from-violet-400 to-indigo-500",
+    "from-rose-400 to-pink-500",
+    "from-fuchsia-400 to-primary",
+    "from-emerald-400 to-teal-500",
+    "from-sky-400 to-blue-500",
+    "from-fuchsia-400 to-purple-500",
+  ];
+  const colorIdx = name ? name.charCodeAt(0) % colorClasses.length : 0;
+
+  if (!loadedSrc || error) {
+    return (
+      <div
+        className={`${className} rounded-full bg-gradient-to-br ${colorClasses[colorIdx]} flex items-center justify-center text-white font-bold text-2xl select-none`}
+        aria-label={`${name} avatar initials`}
+      >
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={loadedSrc}
+      alt={`${name} profile photo`}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setError(true)}
+      className={`${className} rounded-full object-cover`}
+    />
+  );
+}
 
 export function CreatorProfilePanel({
   creator,
@@ -55,8 +281,12 @@ export function CreatorProfilePanel({
             {/* Header / Avatar */}
             <div className="relative h-48 w-full bg-gradient-to-br from-violet-500 to-indigo-600">
               <div className="absolute -bottom-12 left-6">
-                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-slate-50 bg-white shadow-md">
-                  <Image src={creator.avatar} alt={creator.name} fill className="object-cover" />
+                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-slate-50 shadow-md">
+                  <CreatorAvatarPanel
+                    src={resolveCreatorImage(creator)}
+                    name={creator.name}
+                    className="h-24 w-24"
+                  />
                 </div>
               </div>
             </div>
@@ -67,7 +297,9 @@ export function CreatorProfilePanel({
                 <h2 className="text-xl font-bold text-slate-900">{creator.name}</h2>
                 {creator.verified && <CheckCircle2 className="h-5 w-5 fill-blue-500 text-white" />}
               </div>
-              <div className="text-sm font-medium text-slate-500">{creator.handle}</div>
+              <div className="text-sm font-medium text-slate-500">
+                @{(creator as any).username || creator.handle}
+              </div>
               
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -143,6 +375,23 @@ export function CreatorProfilePanel({
                 ))}
               </div>
             </div>
+            {/* Concentric Pentagon Radar Match Chart */}
+            <div className="mt-6 px-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Master Plan Fit Index</h3>
+              <RadarChart />
+            </div>
+
+            {/* Recent Posts Visual Grid Mockup */}
+            <div className="mt-6 px-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Portfolio Showcase</h3>
+              <RecentPostsGallery category={creator.category} />
+            </div>
+
+            {/* outreach template cards */}
+            <div className="mt-6 px-6 pb-8">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Outreach Assistant</h3>
+              <PitchComposerCard creatorName={creator.name} />
+            </div>
 
             {/* Footer Actions */}
             <div className="mt-auto border-t border-slate-200 bg-white p-4 sticky bottom-0">
@@ -150,7 +399,7 @@ export function CreatorProfilePanel({
                 <button className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition shadow-sm">
                   View Full Report
                 </button>
-                <button className="flex-1 rounded-xl bg-orange-500 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-600">
+                <button className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover">
                   Contact Creator
                 </button>
               </div>

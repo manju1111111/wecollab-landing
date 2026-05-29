@@ -6,7 +6,9 @@
   --foreground: #0f172a;
   --muted: #64748b;
   --primary: #7c3aed;
+  --primary-hover: #6d28d9;
   --primary-soft: #ede9fe;
+  --primary-soft-hover: #ddd6fe;
   --ring-glow: rgba(124, 58, 237, 0.15);
 }
 
@@ -15,7 +17,9 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-hover: var(--primary-soft-hover);
   --font-sans: var(--font-sans-display);
   --font-mono: var(--font-geist-mono);
 }

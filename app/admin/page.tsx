@@ -13,6 +13,7 @@ import { PlatformDistribution } from "@/components/admin/dashboard/platform-dist
 import { UpcomingSchedule } from "@/components/admin/dashboard/upcoming-schedule";
 import { RecentActivityFeed } from "@/components/admin/dashboard/recent-activity-feed";
 import { TopSearchInsights } from "@/components/admin/dashboard/top-search-insights";
+import { TeamOverviewWidget } from "@/components/admin/dashboard/team-overview-widget";
 import { Scissors, CheckCircle, FileSpreadsheet, UserPlus } from "lucide-react";
 
 export default async function AdminDashboard() {
@@ -128,6 +129,45 @@ export default async function AdminDashboard() {
       return { name: date, value: cumulativeCount };
     });
 
+  // Fetch employees for TeamOverviewWidget
+  const { data: employeesData } = await supabase
+    .from("employees")
+    .select("id, full_name, email, role, department, designation, phone, status, created_at")
+    .order("created_at", { ascending: false });
+
+  // Get assigned creator counts per employee
+  const { data: creatorCounts } = await supabase
+    .from("creators")
+    .select("assigned_employee");
+
+  const countMap: Record<string, number> = {};
+  (creatorCounts || []).forEach((c: any) => {
+    if (c.assigned_employee) {
+      countMap[c.assigned_employee] = (countMap[c.assigned_employee] || 0) + 1;
+    }
+  });
+
+  // Get completed task counts per employee
+  let taskCountMap: Record<string, number> = {};
+  try {
+    const { data: taskCounts } = await supabase
+      .from("employee_tasks")
+      .select("employee_id")
+      .not("completed_at", "is", null);
+
+    (taskCounts || []).forEach((t: any) => {
+      taskCountMap[t.employee_id] = (taskCountMap[t.employee_id] || 0) + 1;
+    });
+  } catch (e) {
+    // Table may not exist yet
+  }
+
+  const enrichedEmployees = (employeesData || []).map(emp => ({
+    ...emp,
+    assigned_count: countMap[emp.id] || 0,
+    tasks_completed: taskCountMap[emp.id] || 0,
+  }));
+
   return (
     <div className="flex flex-col gap-8 w-full">
       {/* Header */}
@@ -158,7 +198,7 @@ export default async function AdminDashboard() {
             <ProgressOverview />
             <TimeTracker />
             <EmployeeActivityList />
-            <OnboardingProgress />
+            <TeamOverviewWidget employees={enrichedEmployees} />
           </div>
 
           {/* Row 2: Charts */}

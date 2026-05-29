@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
+import { CreatorAvatar } from "../creators/creator-data-grid";
 import { CheckCircle2, ChevronRight, MoreHorizontal } from "lucide-react";
 
 export function RecentCreatorsTable({ creators }: { creators: any[] }) {
@@ -36,7 +37,7 @@ export function RecentCreatorsTable({ creators }: { creators: any[] }) {
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <div className="relative h-10 w-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                        <Image src={c.profile_image || `https://i.pravatar.cc/150?u=${c.username || i}`} alt={c.name} fill className="object-cover" />
+                        <CreatorAvatar src={c.profile_image} name={c.name} className="h-10 w-10" />
                       </div>
                       <div>
                         <div className="text-[14px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">

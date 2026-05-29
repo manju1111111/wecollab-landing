@@ -171,7 +171,7 @@ export function AdminTopFilters({
               All Filters
             </button>
             {filters.subCategories.length > 0 && (
-              <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 shadow-sm"></span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-primary shadow-sm"></span>
             )}
           </div>
         </div>

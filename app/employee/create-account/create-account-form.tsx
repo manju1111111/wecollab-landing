@@ -48,13 +48,13 @@ export function CreateAccountForm({ token, email }: { token: string, email: stri
         </div>
         <h2 className="text-xl font-bold text-slate-900 mb-2">Account Created Successfully</h2>
         <p className="text-[14px] text-slate-500 font-medium mb-8">
-          Your workspace account is now ready. You can log in to access your assigned tasks.
+          Your workspace account is now ready and active. Click below to continue directly to your workspace dashboard.
         </p>
         <Link 
-          href="/employee/login"
+          href="/employee"
           className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[14px] rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-200"
         >
-          Continue to Login <ArrowRight className="h-4 w-4" />
+          Continue to Dashboard <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     );

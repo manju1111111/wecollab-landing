@@ -1,9 +1,45 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, ExternalLink, MessageSquare, CheckCircle2, AlertCircle, Edit, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { MoreHorizontal, ExternalLink, MessageSquare, CheckCircle2, AlertCircle, Edit, Trash2, Sparkles, Check, Send } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+
+export function CreatorAvatar({ src, name, className = "h-10 w-10" }: { src: string; name: string; className?: string }) {
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
+  // Extract initials
+  const initials = name
+    ? name
+        .split(" ")
+        .filter(Boolean)
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "??";
+
+  if (!src || error) {
+    return (
+      <div className={`${className} rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-[13px] shrink-0 uppercase`}>
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={name}
+      onError={() => setError(true)}
+      referrerPolicy="no-referrer"
+      className="object-cover h-full w-full"
+    />
+  );
+}
 
 export function CreatorDataGrid({
   creators,
@@ -13,7 +49,8 @@ export function CreatorDataGrid({
   onRowClick,
   onDelete,
   onLoadMore,
-  hasMore
+  hasMore,
+  onApprove
 }: {
   creators: any[];
   selectedIds: string[];
@@ -23,6 +60,7 @@ export function CreatorDataGrid({
   onDelete: (id: string) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  onApprove?: (id: string) => void;
 }) {
   const allSelected = creators.length > 0 && selectedIds.length === creators.length;
   const observerTarget = useRef<HTMLTableRowElement>(null);
@@ -52,6 +90,29 @@ export function CreatorDataGrid({
     }
   };
 
+  const getStatusBadge = (creator: any) => {
+    const status = creator.verification_status || "Pending Verification";
+    if (status === "Verified") {
+      return (
+        <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider">
+          <CheckCircle2 className="h-3 w-3" /> Live
+        </span>
+      );
+    }
+    if (status === "Ready for Review") {
+      return (
+        <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-700 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider animate-pulse">
+          <Sparkles className="h-3 w-3" /> Review
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider">
+        <AlertCircle className="h-3 w-3" /> Draft
+      </span>
+    );
+  };
+
   return (
     <div className="w-full bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col relative">
       <div className="w-full overflow-x-auto custom-scrollbar">
@@ -69,7 +130,7 @@ export function CreatorDataGrid({
               <th className="py-3 px-4">Creator</th>
               <th className="py-3 px-4">Performance</th>
               <th className="py-3 px-4">Categories</th>
-              <th className="py-3 px-4">Status</th>
+              <th className="py-3 px-4">Verification Status</th>
               <th className="py-3 px-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -81,7 +142,6 @@ export function CreatorDataGrid({
                   key={creator.id} 
                   className={`group transition-colors cursor-pointer ${isSelected ? "bg-indigo-50/50" : "hover:bg-slate-50"}`}
                   onClick={(e) => {
-                    // Prevent row click if clicking checkbox or action buttons
                     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).tagName.toLowerCase() === 'input') {
                       return;
                     }
@@ -93,19 +153,14 @@ export function CreatorDataGrid({
                       type="checkbox" 
                       checked={isSelected}
                       onChange={() => onToggleSelect(creator.id)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 h-4 w-4" 
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 h-4 w-4 animate-scaleIn" 
                     />
                   </td>
                   
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-3">
                       <div className="relative h-10 w-10 rounded-full overflow-hidden shrink-0 border border-slate-200">
-                        <Image 
-                          src={creator.profile_image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80"} 
-                          alt={creator.name} 
-                          fill 
-                          className="object-cover"
-                        />
+                        <CreatorAvatar src={creator.profile_image} name={creator.name} className="h-10 w-10" />
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
@@ -116,7 +171,7 @@ export function CreatorDataGrid({
                           href={`https://instagram.com/${creator.username}`} 
                           target="_blank" 
                           rel="noreferrer" 
-                          className="text-[12px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 mt-0.5"
+                          className="text-[12px] text-slate-500 hover:text-indigo-600 flex items-center gap-1 mt-0.5 font-semibold"
                           onClick={e => e.stopPropagation()}
                         >
                           @{creator.username} <ExternalLink className="h-2.5 w-2.5" />
@@ -158,31 +213,30 @@ export function CreatorDataGrid({
                   </td>
 
                   <td className="py-2.5 px-4">
-                    <div className="flex items-center gap-2">
-                      {creator.email ? (
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md text-[11px] font-bold">
-                          <CheckCircle2 className="h-3 w-3" /> Contact Info
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded-md text-[11px] font-bold">
-                          <AlertCircle className="h-3 w-3" /> Missing Info
-                        </span>
-                      )}
-                      
-                      {creator.has_manager && (
-                        <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded-md text-[11px] font-bold">
-                          Managed
-                        </span>
-                      )}
-                    </div>
+                    {getStatusBadge(creator)}
                   </td>
 
                   <td className="py-2.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      {/* Interactive 1-click Approve Button for pending approvals */}
+                      {creator.verification_status === "Ready for Review" && onApprove && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onApprove(creator.id);
+                          }}
+                          className="h-8 px-3 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-extrabold flex items-center gap-1 transition shadow-sm cursor-pointer"
+                          title="Approve & Publish to Discover"
+                        >
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                          Approve
+                        </button>
+                      )}
+
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          // trigger email action
+                          // trigger email action placeholder
                         }}
                         className="h-8 w-8 flex items-center justify-center rounded bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-indigo-600 transition-colors"
                         title="Send Message"

@@ -4,6 +4,7 @@ import { X, ExternalLink, Mail, MessageSquare, Briefcase, MapPin, TrendingUp, Mo
 import Image from "next/image";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
+import { CreatorAvatar } from "./creator-data-grid";
 
 export function QuickPreviewDrawer({ 
   creator, 
@@ -51,12 +52,7 @@ export function QuickPreviewDrawer({
           {/* Profile Header */}
           <div className="flex items-start gap-4 mb-6">
             <div className="relative h-20 w-20 rounded-full overflow-hidden border border-slate-200 shrink-0">
-              <Image 
-                src={creator.profile_image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80"} 
-                alt={creator.name} 
-                fill 
-                className="object-cover"
-              />
+              <CreatorAvatar src={creator.profile_image} name={creator.name} className="h-20 w-20" />
             </div>
             <div className="flex-1 pt-1">
               <h1 className="text-lg font-bold text-slate-900 leading-tight">{creator.name}</h1>

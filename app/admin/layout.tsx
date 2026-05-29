@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { AdminProfileDropdown } from "@/components/admin/layout/admin-profile-dropdown";
 import { AdminProfileProvider } from "@/components/admin/layout/admin-profile-context";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -90,12 +91,7 @@ export default function AdminLayout({
 
           {/* Right: Actions & Profile */}
           <div className="flex items-center gap-5">
-            <button className="relative text-slate-500 hover:text-slate-800 transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#f1f5f9]">
-                12
-              </span>
-            </button>
+            <NotificationBell userId="00000000-0000-0000-0000-000000000000" userType="admin" />
             
             <button className="text-slate-500 hover:text-slate-800 transition-colors">
               <Settings className="h-5 w-5" />

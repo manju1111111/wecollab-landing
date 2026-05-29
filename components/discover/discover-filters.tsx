@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, SlidersHorizontal, Bookmark, X, Check } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { AllFiltersPanel } from "./all-filters-panel";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -50,7 +50,7 @@ function FilterDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
           isActive
-            ? "border-orange-400/80 bg-orange-50/30 text-slate-700 hover:bg-orange-50"
+            ? "border-primary/40 bg-primary-soft/20 text-primary hover:bg-primary-soft/30"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
         }`}
       >
@@ -93,11 +93,81 @@ function FilterDropdown({
 export function DiscoverFilters({
   filters,
   setFilters,
+  plans = [],
+  activePlanId = null,
+  setActivePlanId,
 }: {
   filters: FilterState;
   setFilters: (f: FilterState) => void;
+  plans?: any[];
+  activePlanId?: string | null;
+  setActivePlanId?: (id: string | null) => void;
 }) {
   const [isAllFiltersOpen, setIsAllFiltersOpen] = useState(false);
+
+  const activeFilters = useMemo(() => {
+    const list: { key: string; label: string; value: string; onClear: () => void }[] = [];
+    if (filters.platform && filters.platform !== "All Platforms") {
+      list.push({
+        key: "platform",
+        label: "Platform",
+        value: filters.platform,
+        onClear: () => setFilters({ ...filters, platform: "All Platforms" })
+      });
+    }
+    if (filters.location && filters.location !== "All") {
+      list.push({
+        key: "location",
+        label: "Location",
+        value: filters.location,
+        onClear: () => setFilters({ ...filters, location: "All" })
+      });
+    }
+    if (filters.gender && filters.gender !== "All") {
+      list.push({
+        key: "gender",
+        label: "Gender",
+        value: filters.gender,
+        onClear: () => setFilters({ ...filters, gender: "All" })
+      });
+    }
+    if (filters.followers && filters.followers !== "all") {
+      list.push({
+        key: "followers",
+        label: "Followers",
+        value: filters.followers,
+        onClear: () => setFilters({ ...filters, followers: "all" })
+      });
+    }
+    if (filters.hasContact) {
+      list.push({
+        key: "hasContact",
+        label: "Saved Only",
+        value: "Yes",
+        onClear: () => setFilters({ ...filters, hasContact: false })
+      });
+    }
+    filters.subCategories.forEach((subCat) => {
+      list.push({
+        key: `subcat-${subCat}`,
+        label: "Niche",
+        value: subCat,
+        onClear: () => setFilters({ ...filters, subCategories: filters.subCategories.filter(c => c !== subCat) })
+      });
+    });
+    return list;
+  }, [filters, setFilters]);
+
+  const handleClearAll = () => {
+    setFilters({
+      platform: "All Platforms",
+      location: "All",
+      gender: "All",
+      followers: "all",
+      hasContact: false,
+      subCategories: [],
+    });
+  };
 
   const toggleSubCat = (subCat: string) => {
     const current = filters.subCategories;
@@ -119,6 +189,28 @@ export function DiscoverFilters({
       {/* Top Filter Row */}
       <div className="flex h-16 flex-wrap items-center justify-between px-6">
         <div className="flex flex-wrap items-center gap-3">
+          
+          {/* Active Blueprint Focus Selector */}
+          {setActivePlanId && plans.length > 0 && (
+            <div className="relative">
+              <select
+                value={activePlanId || ""}
+                onChange={(e) => setActivePlanId(e.target.value ? e.target.value : null)}
+                className={`flex h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] font-black transition outline-none cursor-pointer ${
+                  activePlanId
+                    ? "border-indigo-400 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-50 shadow-sm"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-sm"
+                }`}
+              >
+                <option value="">🎯 Lock Active Plan Focus</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    Focus: {p.name} ({p.brand})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           
           <FilterDropdown
             label="Platform"
@@ -169,7 +261,7 @@ export function DiscoverFilters({
               All Filters
             </button>
             {filters.subCategories.length > 0 && (
-              <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 shadow-sm"></span>
+              <span className="flex h-1.5 w-1.5 rounded-full bg-primary shadow-sm"></span>
             )}
           </div>
         </div>
@@ -181,7 +273,7 @@ export function DiscoverFilters({
           <button
             onClick={() => setFilters({ ...filters, hasContact: !filters.hasContact })}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              filters.hasContact ? "bg-orange-500" : "bg-slate-200"
+              filters.hasContact ? "bg-primary" : "bg-slate-200"
             }`}
           >
             <span
@@ -193,32 +285,49 @@ export function DiscoverFilters({
         </div>
       </div>
 
-      {/* Active Sub-Categories Row */}
-      {filters.subCategories.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50/50 px-6 py-3 border-b border-slate-100 shadow-inner">
-          <span className="text-[12px] font-medium text-slate-500">Active Filters:</span>
-          {filters.subCategories.map((subCat) => (
-            <span
-              key={subCat}
-              className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 py-1 pl-2.5 pr-1.5 text-[12px] font-medium text-violet-700 shadow-sm"
-            >
-              {subCat}
-              <button
-                onClick={() => removeSubCat(subCat)}
-                className="rounded-full p-0.5 hover:bg-violet-200 transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-          <button
-            onClick={() => setFilters({ ...filters, subCategories: [] })}
-            className="ml-2 text-[12px] font-medium text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+      {/* Active Dismissible Filter Chips Row */}
+      <AnimatePresence>
+        {activeFilters.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex flex-wrap items-center gap-2 bg-slate-50/60 px-6 py-3 border-b border-slate-200/50 shadow-inner"
           >
-            Clear all
-          </button>
-        </div>
-      )}
+            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider mr-1">Active Filters:</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {activeFilters.map((f) => (
+                <motion.span
+                  key={f.key}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary-soft/50 py-1 pl-2.5 pr-1.5 text-[11px] font-bold text-primary shadow-sm"
+                >
+                  <span className="opacity-70 text-[10px] font-medium">{f.label}:</span>
+                  <span>{f.value}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      f.onClear();
+                    }}
+                    className="rounded-full p-0.5 hover:bg-primary-soft-hover transition-colors cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </motion.span>
+              ))}
+            </div>
+            <button
+              onClick={handleClearAll}
+              className="ml-3 text-[11px] font-bold text-slate-400 hover:text-primary underline underline-offset-2 transition-colors cursor-pointer"
+            >
+              Clear all
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sort Row */}
       <div className="flex h-12 items-center justify-end px-6">

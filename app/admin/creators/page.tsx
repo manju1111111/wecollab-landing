@@ -2,10 +2,12 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Sparkles, Check, CheckCircle2 } from "lucide-react";
 import { AdminTopFilters, AdminFilterState } from "@/components/admin/creators/admin-top-filters";
 import { CreatorDataGrid } from "@/components/admin/creators/creator-data-grid";
 import { QuickPreviewDrawer } from "@/components/admin/creators/quick-preview-drawer";
 import { AddCreatorModal } from "@/components/admin/creators/add-creator-modal";
+import { BulkAssignModal } from "@/components/admin/creators/bulk-assign-modal";
 import { createClient } from "@/lib/supabase/client";
 
 function AdminCreatorsInner() {
@@ -18,6 +20,9 @@ function AdminCreatorsInner() {
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const PAGE_SIZE = 20;
+
+  // Queue Review Tabs: all | pending (Ready for Review) | draft (Pending Verification) | approved (Verified)
+  const [queueTab, setQueueTab] = useState<"all" | "pending" | "draft" | "approved">("all");
 
   const [filters, setFilters] = useState<AdminFilterState>({
     platform: "All Platforms",
@@ -33,6 +38,9 @@ function AdminCreatorsInner() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [previewCreator, setPreviewCreator] = useState<any | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingCreator, setEditingCreator] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
 
   // Fetch initial data
   const fetchCreators = async (pageNum = 0, isLoadMore = false) => {
@@ -44,17 +52,21 @@ function AdminCreatorsInner() {
     const start = pageNum * PAGE_SIZE;
     const end = start + PAGE_SIZE - 1;
 
-    // Apply filters to query
+    // Apply filters and status queues to query
     let query = supabase.from("creators").select("*", { count: "exact" }).order("created_at", { ascending: false });
 
     // Platform
     if (filters.platform && filters.platform !== "All Platforms") {
-      query = query.contains("platforms", `[{"name":"${filters.platform}"}]`); // Simple JSON array check
+      query = query.contains("platforms", `[{"name":"${filters.platform}"}]`);
     }
-    
-    // Gender
-    if (filters.gender && filters.gender !== "All") {
-      // Handle male/female filtering if we had a gender column. Currently we don't.
+
+    // Queue status filtering
+    if (queueTab === "pending") {
+      query = query.eq("verification_status", "Ready for Review");
+    } else if (queueTab === "draft") {
+      query = query.eq("verification_status", "Pending Verification");
+    } else if (queueTab === "approved") {
+      query = query.eq("verification_status", "Verified");
     }
 
     // Verified
@@ -64,7 +76,7 @@ function AdminCreatorsInner() {
     // Brand Safe
     if (filters.brandSafe) query = query.eq("brand_safe", true);
 
-    const { data, error, count } = await query.range(start, end);
+    const { data, error } = await query.range(start, end);
       
     if (data) {
       if (isLoadMore) {
@@ -91,7 +103,7 @@ function AdminCreatorsInner() {
 
   useEffect(() => {
     fetchCreators(0, false);
-  }, [filters]);
+  }, [filters, queueTab]);
 
   useEffect(() => {
     const handleOpenModal = () => setIsAddModalOpen(true);
@@ -119,21 +131,93 @@ function AdminCreatorsInner() {
     await supabase.from("creators").delete().eq("id", id);
     setCreators(prev => prev.filter(c => c.id !== id));
     if (previewCreator?.id === id) setPreviewCreator(null);
+
+    // Sync deletion to Algolia index in real-time
+    try {
+      await fetch("/api/admin/sync-algolia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id }),
+      });
+    } catch (e) {
+      console.error("Failed to sync deletion to Algolia:", e);
+    }
+
+    // Broadcast deletion to other tabs instantly
+    try {
+      const bc = new BroadcastChannel("wecollab-creators");
+      bc.postMessage({ type: "DELETE", old: { id } });
+      bc.close();
+    } catch (e) {
+      console.warn("[BROADCAST_WARN] BroadcastChannel not supported:", e);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    const supabase = createClient();
+
+    // 1-click Approve and Settle visibility database states
+    const { data: updated, error } = await supabase
+      .from("creators")
+      .update({ verification_status: "Verified", visibility_status: true })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updated) {
+      setCreators(prev => prev.map(c => c.id === id ? updated : c));
+      if (previewCreator?.id === id) {
+        setPreviewCreator(updated);
+      }
+
+      // Sync verified record to Algolia discovery index
+      try {
+        await fetch("/api/admin/sync-algolia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "save", creator: updated }),
+        });
+      } catch (e) {
+        console.error("Failed to sync verified creator to Algolia:", e);
+      }
+
+      // Broadcast update to other tabs instantly
+      try {
+        const bc = new BroadcastChannel("wecollab-creators");
+        bc.postMessage({ type: "UPDATE", new: updated });
+        bc.close();
+      } catch (e) {
+        console.warn("[BROADCAST_WARN] BroadcastChannel not supported:", e);
+      }
+    } else if (error) {
+      console.error("[APPROVE_ERROR]", error.message);
+      alert(`Approval error: ${error.message}`);
+    }
   };
 
   const handleAddSubmit = async (data: any) => {
     const supabase = createClient();
     
-    // Clean up numerical fields
+    // Explicitly map inputs to exact Postgres database columns
     const newCreator = {
-      ...data,
-      followers_count: parseInt(data.followers_count) || 0,
-      avg_views: parseInt(data.avg_views) || 0,
+      name: data.name,
+      username: data.username,
+      bio: data.bio || "",
+      profile_image: data.profile_image || "",
+      followers: parseInt(data.followers_count) || 0,
+      avg_reel_views: String(data.avg_views || 0),
       engagement_rate: parseFloat(data.engagement_rate) || 0,
       collaboration_pricing: parseFloat(data.collaboration_pricing) || null,
       has_manager: data.has_manager === "true",
       verified: data.verified === "true",
       brand_safe: data.brand_safe === "true",
+      location: data.location || "",
+      tags: data.tags || [],
+      category: data.category || "General",
+      email: data.email || null,
+      assigned_employee: data.assigned_employee || null,
+      verification_status: "Verified", // Admin-added creators are auto-verified
+      visibility_status: true, // Admin-added creators are auto-visible
     };
 
     const { data: inserted, error } = await supabase
@@ -144,10 +228,138 @@ function AdminCreatorsInner() {
       
     if (inserted) {
       setCreators(prev => [inserted, ...prev]);
+
+      // Trigger notification if assigned to an employee
+      if (inserted.assigned_employee) {
+        try {
+          fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "create",
+              payload: {
+                userId: inserted.assigned_employee,
+                userType: "employee",
+                type: "assignment",
+                title: "New Creator Assigned 👤",
+                body: `Admin assigned a new creator to you: @${inserted.username || inserted.name}.`,
+                link: "/employee/creators",
+              }
+            })
+          });
+        } catch (e) {
+          console.error("Failed to send assignment notification:", e);
+        }
+      }
+
+      // Sync insertion to Algolia index in real-time
+      try {
+        await fetch("/api/admin/sync-algolia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "save", creator: inserted }),
+        });
+      } catch (e) {
+        console.error("Failed to sync insertion to Algolia:", e);
+      }
+
+      // Broadcast insertion to other tabs instantly
+      try {
+        const bc = new BroadcastChannel("wecollab-creators");
+        bc.postMessage({ type: "INSERT", new: inserted });
+        bc.close();
+      } catch (e) {
+        console.warn("[BROADCAST_WARN] BroadcastChannel not supported:", e);
+      }
     }
     if (error) {
-      console.error(error);
-      alert("Failed to add creator");
+      console.error("[DATABASE_INSERT_ERROR]", error);
+      alert(`Failed to add creator: ${error.message || "Unknown database error"}`);
+    }
+  };
+
+  const handleEditSubmit = async (data: any) => {
+    if (!editingCreator) return;
+    
+    const supabase = createClient();
+    
+    // Explicitly map inputs to exact Postgres database columns
+    const updatedCreator = {
+      name: data.name,
+      username: data.username,
+      bio: data.bio || "",
+      profile_image: data.profile_image || "",
+      followers: parseInt(data.followers_count) || 0,
+      avg_reel_views: String(data.avg_views || 0),
+      engagement_rate: parseFloat(data.engagement_rate) || 0,
+      collaboration_pricing: parseFloat(data.collaboration_pricing) || null,
+      has_manager: data.has_manager === "true",
+      verified: data.verified === "true",
+      brand_safe: data.brand_safe === "true",
+      location: data.location || "",
+      tags: data.tags || [],
+      category: data.category || "General",
+      email: data.email || null,
+      assigned_employee: data.assigned_employee || null,
+    };
+
+    const { data: updated, error } = await supabase
+      .from("creators")
+      .update(updatedCreator)
+      .eq("id", editingCreator.id)
+      .select()
+      .single();
+      
+    if (updated) {
+      setCreators(prev => prev.map(c => c.id === updated.id ? updated : c));
+      setPreviewCreator(updated);
+
+      // Trigger notification if assignment changed
+      if (updated.assigned_employee && updated.assigned_employee !== editingCreator.assigned_employee) {
+        try {
+          fetch("/api/notifications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "create",
+              payload: {
+                userId: updated.assigned_employee,
+                userType: "employee",
+                type: "assignment",
+                title: "New Creator Assigned 👤",
+                body: `Admin assigned a creator to you: @${updated.username || updated.name}.`,
+                link: "/employee/creators",
+              }
+            })
+          });
+        } catch (e) {
+          console.error("Failed to send assignment notification:", e);
+        }
+      }
+
+      // Sync update to Algolia index in real-time
+      try {
+        await fetch("/api/admin/sync-algolia", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "save", creator: updated }),
+        });
+      } catch (e) {
+        console.error("Failed to sync update to Algolia:", e);
+      }
+
+      // Broadcast update to other tabs instantly
+      try {
+        const bc = new BroadcastChannel("wecollab-creators");
+        bc.postMessage({ type: "UPDATE", new: updated });
+        bc.close();
+      } catch (e) {
+        console.warn("[BROADCAST_WARN] BroadcastChannel not supported:", e);
+      }
+    }
+    if (error) {
+      console.error("[DATABASE_UPDATE_ERROR]", error);
+      alert(`Failed to update creator: ${error.message || "Unknown database error"}`);
     }
   };
 
@@ -160,20 +372,61 @@ function AdminCreatorsInner() {
       <div className="flex flex-col px-6 py-3">
         
         {/* Top Actions */}
-        <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3 shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Creator Database</h1>
-            <p className="text-[13px] text-slate-500 font-medium hidden sm:block">Manage and discover influencers.</p>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Creator Database</h1>
+            <p className="text-[13px] text-slate-500 font-medium hidden sm:block">Audit curation queues and manage influencer records.</p>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Queue Tab Toggles */}
+          <div className="flex bg-slate-100 rounded-xl p-0.5 text-[11px] font-extrabold max-w-fit shrink-0">
+            <button
+              onClick={() => setQueueTab("all")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                queueTab === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setQueueTab("draft")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                queueTab === "draft" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Draft Imports
+            </button>
+            <button
+              onClick={() => setQueueTab("pending")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                queueTab === "pending" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-750"
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-purple-650" />
+              Review Queue
+            </button>
+            <button
+              onClick={() => setQueueTab("approved")}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                queueTab === "approved" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Approved & Live
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
             {selectedIds.length > 0 && (
-              <button className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-700 text-[13px] font-bold shadow-sm hover:bg-slate-50 transition-colors">
-                Bulk Actions ({selectedIds.length})
+              <button
+                onClick={() => setIsBulkAssignOpen(true)}
+                className="h-9 px-4 rounded-lg bg-white border border-slate-200 text-slate-700 text-[13px] font-bold shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Assign to Employee ({selectedIds.length})
               </button>
             )}
             <button 
               onClick={() => setIsAddModalOpen(true)}
-              className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-bold shadow-sm shadow-indigo-200 transition-colors"
+              className="h-9 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-750 text-white text-[13px] font-bold shadow-sm shadow-indigo-200 transition-colors cursor-pointer"
             >
               + Add Creator
             </button>
@@ -197,6 +450,7 @@ function AdminCreatorsInner() {
             onDelete={handleDelete}
             onLoadMore={loadMore}
             hasMore={hasMore}
+            onApprove={handleApprove}
           />
         </div>
       </div>
@@ -205,8 +459,8 @@ function AdminCreatorsInner() {
         creator={previewCreator}
         onClose={() => setPreviewCreator(null)}
         onEdit={(c) => {
-          // Open edit modal (to be implemented)
-          console.log("Edit", c);
+          setEditingCreator(c);
+          setIsEditModalOpen(true);
         }}
       />
       
@@ -214,6 +468,57 @@ function AdminCreatorsInner() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleAddSubmit}
+      />
+
+      <AddCreatorModal 
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingCreator(null);
+        }}
+        onSubmit={handleEditSubmit}
+        creator={editingCreator}
+      />
+
+      <BulkAssignModal
+        isOpen={isBulkAssignOpen}
+        onClose={() => { setIsBulkAssignOpen(false); setSelectedIds([]); }}
+        selectedCount={selectedIds.length}
+        onAssign={async (employeeId: string) => {
+          const supabase = createClient();
+          const { error } = await supabase
+            .from("creators")
+            .update({ assigned_employee: employeeId })
+            .in("id", selectedIds);
+          if (error) throw error;
+
+          // Trigger bulk assignment notification
+          try {
+            fetch("/api/notifications", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "create",
+                payload: {
+                  userId: employeeId,
+                  userType: "employee",
+                  type: "assignment",
+                  title: "Creators Assigned 👤",
+                  body: `Admin assigned ${selectedIds.length} creators to your portfolio.`,
+                  link: "/employee/creators",
+                }
+              })
+            });
+          } catch (e) {
+            console.error("Failed to send bulk assignment notification:", e);
+          }
+
+          // Update local state
+          setCreators(prev => prev.map(c =>
+            selectedIds.includes(c.id) ? { ...c, assigned_employee: employeeId } : c
+          ));
+          setSelectedIds([]);
+        }}
       />
     </div>
   );

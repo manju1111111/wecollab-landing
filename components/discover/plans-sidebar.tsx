@@ -31,7 +31,7 @@ export function PlansSidebar({
 
         <Link
           href="/plans"
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-orange-400 bg-white py-2.5 text-[14px] font-semibold text-orange-500 transition hover:bg-orange-50 shadow-sm"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/45 bg-white py-2.5 text-[14px] font-semibold text-primary transition hover:bg-primary-soft/35 shadow-sm"
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} />
           Go to Plans Dashboard
