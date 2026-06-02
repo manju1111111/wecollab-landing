@@ -75,14 +75,14 @@ export function CtaSection() {
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="#pricing"
+                href="/brand/login"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-900 dark:bg-violet-600 px-7 py-3.5 text-[0.9375rem] font-semibold text-white shadow-xl transition hover:bg-slate-800 dark:hover:bg-violet-700"
               >
                 Get Started Free
                 <span aria-hidden>→</span>
               </Link>
               <Link
-                href="#pricing"
+                href="/brand/login"
                 className="inline-flex items-center rounded-full border border-slate-300/90 bg-white/90 dark:border-slate-700 dark:bg-slate-800 px-7 py-3.5 text-[0.9375rem] font-semibold text-slate-900 dark:text-white shadow-sm backdrop-blur transition hover:bg-white dark:hover:bg-slate-700"
               >
                 Book a Demo

@@ -120,7 +120,7 @@ export function Hero() {
                 transition={{ delay: 0.6, duration: 0.5 }}
                 className="mt-5 flex w-full flex-wrap items-center gap-4 sm:mt-6 sm:gap-5"
               >
-                <Link href="#cta" passHref legacyBehavior>
+                <Link href="/brand/login" passHref legacyBehavior>
                   <motion.a
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}

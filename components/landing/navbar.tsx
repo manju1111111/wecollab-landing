@@ -60,13 +60,13 @@ export function Navbar() {
 
         <div className="hidden items-center gap-4 sm:flex">
           <Link
-            href="#login"
+            href="/brand/login"
             className="text-[0.9375rem] font-semibold text-slate-700 transition-colors hover:text-slate-900"
           >
             Login
           </Link>
           <Link
-            href="#cta"
+            href="/brand/login"
             className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-[1.1rem] py-2.5 text-[0.9375rem] font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800"
           >
             Join for Free
@@ -105,14 +105,14 @@ export function Navbar() {
             ))}
             <hr className="my-2 border-violet-100/80" />
             <Link
-              href="#login"
+              href="/brand/login"
               className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-800"
               onClick={() => setOpen(false)}
             >
               Login
             </Link>
             <Link
-              href="#cta"
+              href="/brand/login"
               className="mt-1 rounded-full bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white"
               onClick={() => setOpen(false)}
             >
