@@ -18,9 +18,12 @@ export const metadata: Metadata = {
   description:
     "Connect with verified creators that match your brand, audience, and campaign goals. AI matching, advanced filters, and enterprise-ready workflows.",
   icons: {
-    icon: "/assets/logo.jpg",
-    shortcut: "/assets/logo.jpg",
-    apple: "/assets/logo.jpg",
+    icon: [
+      { url: "/favicon.ico?v=2", sizes: "any" },
+      { url: "/icon.png?v=2", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico?v=2",
+    apple: "/apple-icon.png?v=2",
   },
 };
 
