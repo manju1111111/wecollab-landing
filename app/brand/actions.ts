@@ -48,25 +48,6 @@ export async function registerBrand(formData: FormData) {
       .single();
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        // Fallback for demo when DB is not yet migrated
-        console.warn("[BRAND_AUTH] 'brands' table does not exist. Emulating registration.");
-        const mockSession = {
-          id: "brand-mock-uuid-1",
-          name,
-          role: "brand",
-          isMock: true
-        };
-        const cookieStore = await cookies();
-        cookieStore.set("brand_session", JSON.stringify(mockSession), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 7 * 24 * 60 * 60
-        });
-        return { success: true, isMock: true };
-      }
       console.error("[REGISTER_BRAND_ERROR]", error);
       return { error: error.message };
     }
@@ -76,7 +57,6 @@ export async function registerBrand(formData: FormData) {
       id: brand.id,
       name: brand.name,
       role: "brand",
-      isMock: false
     };
 
     const cookieStore = await cookies();
@@ -116,28 +96,6 @@ export async function loginBrand(formData: FormData) {
       .maybeSingle();
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        // Safe demo fallback when DB is not migrated
-        console.warn("[BRAND_AUTH] 'brands' table does not exist. Emulating brand login.");
-        if (email.toLowerCase() === "nike@wecollab.in" && password === "nike@2026") {
-          const mockSession = {
-            id: "brand-mock-uuid-2",
-            name: "Nike India",
-            role: "brand",
-            isMock: true
-          };
-          const cookieStore = await cookies();
-          cookieStore.set("brand_session", JSON.stringify(mockSession), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            path: "/",
-            maxAge: 7 * 24 * 60 * 60
-          });
-          return { success: true, isMock: true };
-        }
-        return { error: "Invalid email or password (or run migration for actual login)." };
-      }
       return { error: error.message };
     }
 
@@ -158,7 +116,6 @@ export async function loginBrand(formData: FormData) {
       id: brand.id,
       name: brand.name,
       role: "brand",
-      isMock: false
     };
 
     const cookieStore = await cookies();

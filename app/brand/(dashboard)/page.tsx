@@ -19,12 +19,11 @@ interface CampaignProposal {
 export default function BrandOverviewPage() {
   const [proposals, setProposals] = useState<CampaignProposal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
   const [metrics, setMetrics] = useState({
-    activeCampaigns: 2,
-    budgetSpent: 420000,
-    creatorsAssigned: 5,
-    pendingApprovals: 3
+    activeCampaigns: 0,
+    budgetSpent: 0,
+    creatorsAssigned: 0,
+    pendingApprovals: 0
   });
 
   const fetchProposals = async () => {
@@ -46,9 +45,21 @@ export default function BrandOverviewPage() {
         .select("id, name")
         .eq("brand_id", session.id);
 
-      if (campErr || !campaigns || campaigns.length === 0) {
-        // Table doesn't exist or no campaigns found -> trigger mock fallback
-        triggerMockFallback();
+      if (campErr) {
+        console.error("Campaign fetch error:", campErr.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!campaigns || campaigns.length === 0) {
+        setProposals([]);
+        setMetrics({
+          activeCampaigns: 0,
+          budgetSpent: 0,
+          creatorsAssigned: 0,
+          pendingApprovals: 0
+        });
+        setLoading(false);
         return;
       }
 
@@ -60,17 +71,36 @@ export default function BrandOverviewPage() {
         .select("id, campaign_id, creator_id, deal_status, price, notes")
         .in("campaign_id", campaignIds);
 
-      if (propsErr || !propsData) {
-        triggerMockFallback();
+      if (propsErr) {
+        console.error("Proposals fetch error:", propsErr.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!propsData || propsData.length === 0) {
+        setProposals([]);
+        setMetrics({
+          activeCampaigns: campaigns.length,
+          budgetSpent: 0,
+          creatorsAssigned: 0,
+          pendingApprovals: 0
+        });
+        setLoading(false);
         return;
       }
 
       // Fetch creator details
       const creatorIds = propsData.map(p => p.creator_id);
-      const { data: creators } = await supabase
+      const { data: creators, error: creatorsErr } = await supabase
         .from("creators")
         .select("id, name, username, followers")
         .in("id", creatorIds);
+
+      if (creatorsErr) {
+        console.error("Creators fetch error:", creatorsErr.message);
+        setLoading(false);
+        return;
+      }
 
       const creatorMap = new Map();
       (creators || []).forEach(c => creatorMap.set(c.id, c));
@@ -100,53 +130,17 @@ export default function BrandOverviewPage() {
 
       setMetrics({
         activeCampaigns: activeC,
-        budgetSpent: budgetS || 180000,
+        budgetSpent: budgetS,
         creatorsAssigned: creatorsA,
         pendingApprovals: pendingA
       });
 
       setProposals(enriched);
       setLoading(false);
-    } catch (e) {
-      triggerMockFallback();
+    } catch (e: any) {
+      console.error("Critical error fetching brand proposals:", e.message);
+      setLoading(false);
     }
-  };
-
-  const triggerMockFallback = () => {
-    setIsDemo(true);
-    setProposals([
-      {
-        id: "prop-mock-1",
-        campaign_name: "Summer Activewear 2026",
-        creator_name: "Virat Kohli",
-        creator_username: "virat.kohli",
-        creator_followers: 260000000,
-        proposed_price: 1250000,
-        deal_status: "proposed",
-        notes: "Highly aligned, proposing 2 reels + 3 stories."
-      },
-      {
-        id: "prop-mock-2",
-        campaign_name: "Summer Activewear 2026",
-        creator_name: "Katrina Kaif",
-        creator_username: "katrinakaif",
-        creator_followers: 80000000,
-        proposed_price: 650000,
-        deal_status: "proposed",
-        notes: "Will post 1 high-production IG video."
-      },
-      {
-        id: "prop-mock-3",
-        campaign_name: "Nike Air Max Launch",
-        creator_name: "Ranveer Singh",
-        creator_username: "ranveersingh",
-        creator_followers: 48000000,
-        proposed_price: 450000,
-        deal_status: "proposed",
-        notes: "Agreed to wear shoes in daily training reels."
-      }
-    ]);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -165,8 +159,6 @@ export default function BrandOverviewPage() {
         ? prev.budgetSpent + (proposals.find(p => p.id === id)?.proposed_price || 0)
         : prev.budgetSpent
     }));
-
-    if (isDemo) return;
 
     try {
       const supabase = createClient();
@@ -299,11 +291,6 @@ export default function BrandOverviewPage() {
           <div>
             <h3 className="text-[15px] font-black text-white flex items-center gap-2">
               Pending Collaborations Approvals
-              {isDemo && (
-                <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Demo
-                </span>
-              )}
             </h3>
             <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Accept or decline creator pricing bids in real time.</p>
           </div>
