@@ -172,7 +172,7 @@ export function Pricing() {
                 {inr(starterPrice)} <span className="text-base font-semibold text-slate-500 dark:text-slate-400">/mo</span>
               </p>
               <Link
-                href="#cta"
+                href="/brand/login"
                 className="mt-6 inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white text-[14px] font-semibold text-violet-700 transition hover:border-violet-200 dark:border-slate-700 dark:bg-slate-800 dark:text-violet-300 dark:hover:border-violet-500/50"
               >
                 Start Free Trial
@@ -220,7 +220,7 @@ export function Pricing() {
                 {inr(proPrice)} <span className="text-base font-semibold text-slate-500 dark:text-slate-400">/mo</span>
               </p>
               <Link
-                href="#cta"
+                href="/brand/login"
                 className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-violet-600 text-[14px] font-semibold text-white shadow-lg shadow-violet-500/25 transition hover:bg-violet-700"
               >
                 Start Free Trial
@@ -259,7 +259,7 @@ export function Pricing() {
               </p>
               <p className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">Custom</p>
               <Link
-                href="#cta"
+                href="/brand/login"
                 className="mt-6 inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white text-[14px] font-semibold text-violet-700 transition hover:border-violet-200 dark:border-slate-700 dark:bg-slate-800 dark:text-violet-300 dark:hover:border-violet-500/50"
               >
                 Contact Sales
