@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "Wecollab — Find the Right Creator for Every Campaign",
   description:
     "Connect with verified creators that match your brand, audience, and campaign goals. AI matching, advanced filters, and enterprise-ready workflows.",
+  icons: {
+    icon: "/assets/logo.jpg",
+    shortcut: "/assets/logo.jpg",
+    apple: "/assets/logo.jpg",
+  },
 };
 
 export default function RootLayout({
