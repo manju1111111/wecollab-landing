@@ -30,7 +30,9 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   let sessionUser: { id: string; full_name: string; role: string; status: string } | null = null;
   try {
     const session = verifySession(sessionCookie.value);
-    if (!session || !["employee", "admin", "senior_employee", "team_lead"].includes(session.role)) {
+    const userRole = session?.role ? session.role.toLowerCase() : "";
+    const allowedRoles = ["employee", "admin", "manager", "researcher", "senior_employee", "team_lead"];
+    if (!session || !allowedRoles.includes(userRole)) {
       throw new Error("Invalid session");
     }
     const { createAdminClient } = await import("@/lib/supabase/server");

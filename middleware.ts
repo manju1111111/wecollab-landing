@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { verifySession } from '@/lib/supabase/session-crypto'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Identify portal paths
@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
             session = JSON.parse(brandSession.value);
           } catch (_) {}
         }
-        if (session && session.id && session.role === 'brand') {
+        if (session && session.id && session.role?.toLowerCase() === 'brand') {
           isValid = true;
         }
       } catch (e) {
@@ -70,7 +70,7 @@ export async function proxy(request: NextRequest) {
             session = JSON.parse(creatorSession.value);
           } catch (_) {}
         }
-        if (session && session.id && session.role === 'creator') {
+        if (session && session.id && session.role?.toLowerCase() === 'creator') {
           isValid = true;
         }
       } catch (e) {
@@ -103,7 +103,9 @@ export async function proxy(request: NextRequest) {
             session = JSON.parse(employeeSession.value);
           } catch (_) {}
         }
-        if (session && session.id && (session.role === 'employee' || session.role === 'admin' || session.role === 'senior_employee' || session.role === 'team_lead')) {
+        const userRole = (session?.role || '').toLowerCase();
+        const allowedRoles = ['employee', 'admin', 'manager', 'researcher', 'senior_employee', 'team_lead'];
+        if (session && session.id && allowedRoles.includes(userRole)) {
           isValid = true;
         }
       } catch (e) {
@@ -239,7 +241,9 @@ export async function proxy(request: NextRequest) {
             session = JSON.parse(employeeSession.value);
           } catch (_) {}
         }
-        if (session && session.id && (session.role === 'employee' || session.role === 'admin' || session.role === 'senior_employee' || session.role === 'team_lead')) {
+        const userRole = (session?.role || '').toLowerCase();
+        const allowedRoles = ['employee', 'admin', 'manager', 'researcher', 'senior_employee', 'team_lead'];
+        if (session && session.id && allowedRoles.includes(userRole)) {
           return NextResponse.next();
         }
       } catch (e) {
