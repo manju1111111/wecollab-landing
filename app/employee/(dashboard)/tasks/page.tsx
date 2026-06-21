@@ -40,16 +40,6 @@ export default async function EmployeeTasksPage() {
   const done = tasks.filter((t: any) => t.completed_at).length;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Tasks</h1>
-        <p className="text-slate-500 text-[14px] font-medium mt-1">
-          {pending} pending · {done} completed
-        </p>
-      </div>
-      <div className="max-w-2xl">
-        <TaskFeed tasks={tasks} employeeId={session.id} creators={creatorStubs} />
-      </div>
-    </div>
+    <TaskFeed tasks={tasks} employeeId={session.id} creators={creatorStubs} />
   );
 }

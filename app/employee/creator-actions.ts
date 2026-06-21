@@ -353,3 +353,48 @@ export async function submitCreatorForReview({
   return { success: true };
 }
 
+export async function assignCreatorToEmployee({
+  employeeId,
+  creatorId,
+}: {
+  employeeId: string;
+  creatorId: string;
+}) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+  if (session.id !== employeeId && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("creators")
+    .update({ assigned_employee: employeeId })
+    .eq("id", creatorId);
+
+  if (error) {
+    console.error("[ASSIGN_CREATOR_ERROR]", error.message);
+    return { error: error.message };
+  }
+
+  // Create an audit entry or log note
+  try {
+    // Insert fallback logs or add note
+    await supabase
+      .from("employee_creator_notes")
+      .upsert(
+        { employee_id: employeeId, creator_id: creatorId, deal_status: "new" },
+        { onConflict: "employee_id,creator_id" }
+      );
+  } catch (e) {
+    console.error("[ASSIGN_CREATOR_NOTE_UPSERT_FAILED]", e);
+  }
+
+  revalidatePath("/employee");
+  revalidatePath("/employee/pipeline");
+  return { success: true };
+}
+

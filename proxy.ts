@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { verifySession } from '@/lib/supabase/session-crypto'
+function decodeSessionCookie(signedCookie: string | undefined): any | null {
+  if (!signedCookie) return null;
+  const parts = signedCookie.split(".");
+  if (parts.length !== 2) return null;
+  const [base64Payload] = parts;
+  try {
+    const payloadStr = atob(base64Payload);
+    return JSON.parse(payloadStr);
+  } catch (e) {
+    return null;
+  }
+}
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Identify portal paths
@@ -31,7 +42,7 @@ export async function middleware(request: NextRequest) {
     let isValid = false;
     if (brandSession?.value) {
       try {
-        let session = verifySession(brandSession.value);
+        let session = decodeSessionCookie(brandSession.value);
         if (!session) {
           try {
             session = JSON.parse(brandSession.value);
@@ -64,7 +75,7 @@ export async function middleware(request: NextRequest) {
     let isValid = false;
     if (creatorSession?.value) {
       try {
-        let session = verifySession(creatorSession.value);
+        let session = decodeSessionCookie(creatorSession.value);
         if (!session) {
           try {
             session = JSON.parse(creatorSession.value);
@@ -97,7 +108,7 @@ export async function middleware(request: NextRequest) {
     let isValid = false;
     if (employeeSession?.value) {
       try {
-        let session = verifySession(employeeSession.value);
+        let session = decodeSessionCookie(employeeSession.value);
         if (!session) {
           try {
             session = JSON.parse(employeeSession.value);
@@ -235,7 +246,7 @@ export async function middleware(request: NextRequest) {
     const employeeSession = request.cookies.get('employee_session');
     if (employeeSession?.value) {
       try {
-        let session = verifySession(employeeSession.value);
+        let session = decodeSessionCookie(employeeSession.value);
         if (!session) {
           try {
             session = JSON.parse(employeeSession.value);

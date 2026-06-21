@@ -12,11 +12,12 @@ export default async function EmployeePipelinePage() {
 
   const supabase = await createClient();
 
+  // 1. Fetch assigned creators for current employee
   let pipelineCreators: any[] = [];
   try {
     const { data: creators } = await supabase
       .from("creators")
-      .select("id, name, username, profile_image, category, followers")
+      .select("id, name, username, profile_image, category, followers, engagement_rate, collaboration_pricing, estimated_rates")
       .eq("assigned_employee", session.id);
 
     if (creators && creators.length > 0) {
@@ -32,10 +33,24 @@ export default async function EmployeePipelinePage() {
       }));
     }
   } catch (e) {
-    console.warn("[PIPELINE_PAGE]", e);
+    console.warn("[PIPELINE_PAGE] assigned creators error:", e);
   }
 
-  // Retrieve pipeline audit history logs
+  // 2. Fetch unassigned creators (so employee can add them to their pipeline)
+  let unassignedCreators: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("creators")
+      .select("id, name, username, profile_image, category, followers, engagement_rate, collaboration_pricing, estimated_rates")
+      .is("assigned_employee", null)
+      .order("followers", { ascending: false })
+      .limit(30);
+    unassignedCreators = data || [];
+  } catch (e) {
+    console.warn("[PIPELINE_PAGE] unassigned creators error:", e);
+  }
+
+  // 3. Retrieve pipeline audit history logs
   let historyEvents: any[] = [];
   try {
     const { data: hist } = await supabase
@@ -62,7 +77,7 @@ export default async function EmployeePipelinePage() {
       }));
     }
   } catch (e) {
-    console.warn("[PIPELINE_HISTORY_FETCH_ERROR]", e);
+    console.warn("[PIPELINE_PAGE] pipeline history error:", e);
   }
 
   // Populate aesthetic telemetry fallback records if table is brand new/empty
@@ -95,18 +110,12 @@ export default async function EmployeePipelinePage() {
     ];
   }
 
-  const totalDone = pipelineCreators.filter(c => c.deal_status === "deal_closed").length;
-
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Deal Pipeline</h1>
-        <p className="text-slate-500 text-[14px] font-medium mt-1">
-          {pipelineCreators.length} creator{pipelineCreators.length !== 1 ? "s" : ""} ·{" "}
-          {totalDone} deal{totalDone !== 1 ? "s" : ""} closed
-        </p>
-      </div>
-      <DealPipeline creators={pipelineCreators} employeeId={session.id} history={historyEvents} />
-    </div>
+    <DealPipeline 
+      creators={pipelineCreators} 
+      employeeId={session.id} 
+      history={historyEvents}
+      unassignedCreators={unassignedCreators}
+    />
   );
 }

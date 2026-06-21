@@ -104,7 +104,7 @@ export async function completeTask(taskId: string) {
 
 export async function updateTask(
   taskId: string,
-  updates: { completed_at?: string | null; due_date?: string | null }
+  updates: { completed_at?: string | null; due_date?: string | null; title?: string }
 ) {
   const session = await getValidatedEmployeeSession();
   if (!session) {
