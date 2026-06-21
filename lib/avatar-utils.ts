@@ -19,10 +19,15 @@ export function sanitizeImageSrc(src: string | null | undefined): string {
   if (s.startsWith("data:")) return "";
 
   // Force HTTPS to prevent mixed-content browser warnings.
-  if (s.startsWith("http://")) return s.replace("http://", "https://");
+  const cleanUrl = s.startsWith("http://") ? s.replace("http://", "https://") : s;
 
-  // Accept valid HTTPS URLs.
-  if (s.startsWith("https://")) return s;
+  if (cleanUrl.startsWith("https://")) {
+    const isInstagramUrl = cleanUrl.includes("cdninstagram.com") || cleanUrl.includes("fbcdn.net") || cleanUrl.includes("instagram.com");
+    if (isInstagramUrl) {
+      return `/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`;
+    }
+    return cleanUrl;
+  }
 
   // Reject anything else (relative paths without proper context, etc.)
   return "";

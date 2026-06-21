@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { ActivityTimeline } from "@/components/employee/activity-timeline";
 import { WorkLog } from "@/components/employee/work-log";
 
@@ -7,7 +8,7 @@ export default async function EmployeeActivityPage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
   const session = sessionCookie
-    ? JSON.parse(sessionCookie.value)
+    ? (verifySession(sessionCookie.value) || { id: "guest", role: "Employee" })
     : { id: "guest", role: "Employee" };
 
   const supabase = await createClient();
@@ -29,12 +30,9 @@ export default async function EmployeeActivityPage() {
   // Fallback: synthesize events from tasks and notes (before activity_log table exists)
   if (events.length === 0) {
     try {
-      const { data: tasks } = await supabase
-        .from("employee_tasks")
-        .select("id, title, completed_at, created_at")
-        .eq("employee_id", session.id)
-        .order("created_at", { ascending: false })
-        .limit(30);
+      const { getTasks } = await import("@/lib/supabase/fallback-db");
+      const rawTasks = await getTasks(supabase, session.id);
+      const tasks = (rawTasks || []).slice(0, 30);
 
       const { data: notes } = await supabase
         .from("employee_creator_notes")
@@ -43,7 +41,7 @@ export default async function EmployeeActivityPage() {
         .order("updated_at", { ascending: false })
         .limit(10);
 
-      const taskEvents = (tasks || []).flatMap((t): any[] => [
+      const taskEvents = (tasks || []).flatMap((t: any): any[] => [
         { id: `t-${t.id}`, type: "task_created", description: `Created task: "${t.title}"`, created_at: t.created_at },
         ...(t.completed_at ? [{ id: `tc-${t.id}`, type: "task_completed", description: `Completed task: "${t.title}"`, created_at: t.completed_at }] : []),
       ]);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Award, Plus, Calendar, DollarSign, Target, Search, Folder, ChevronRight, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getBrandSession } from "@/app/brand/actions";
 
 interface Campaign {
   id: string;
@@ -25,13 +26,8 @@ export default function BrandCampaignsPage() {
     try {
       const supabase = createClient();
 
-      const sessionCookie = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("brand_session="))
-        ?.split("=")[1];
-
-      if (!sessionCookie) return;
-      const session = JSON.parse(decodeURIComponent(sessionCookie));
+      const session = await getBrandSession();
+      if (!session) return;
 
       const { data, error } = await supabase
         .from("campaigns")
@@ -117,13 +113,8 @@ export default function BrandCampaignsPage() {
 
     try {
       const supabase = createClient();
-      const sessionCookie = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("brand_session="))
-        ?.split("=")[1];
-
-      if (!sessionCookie) return;
-      const session = JSON.parse(decodeURIComponent(sessionCookie));
+      const session = await getBrandSession();
+      if (!session) return;
 
       const { data, error } = await supabase
         .from("campaigns")

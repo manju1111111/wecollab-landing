@@ -1,11 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Mail, Phone, MapPin, MoreHorizontal, ShieldCheck } from "lucide-react";
 import { useAdminProfile } from "@/components/admin/layout/admin-profile-context";
 
 export function AdminProfile() {
   const { profile } = useAdminProfile();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-[320px] animate-pulse bg-slate-50/20" />
+    );
+  }
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 flex flex-col h-[320px] relative">

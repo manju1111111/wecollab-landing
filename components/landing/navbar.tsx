@@ -4,12 +4,14 @@ import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import { ChevronDown, Menu, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { clsx } from "clsx";
 
 const links = [
   { label: "Product", href: "#product", hasChevron: true },
   { label: "How It Works", href: "#how-it-works" },
+  { label: "Free Analytics", href: "/analytics" },
+  { label: "Newsletter", href: "/newsletter" },
   { label: "Creators", href: "#creators" },
   { label: "Resources", href: "#resources", hasChevron: true },
 ];
@@ -18,6 +20,99 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { scrollY } = useScroll();
+
+  const [session, setSession] = useState<{
+    role: "admin" | "brand" | "employee" | null;
+    name: string;
+    dashboardUrl: string;
+  } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Parse cookies
+    const cookies = document.cookie.split(";").reduce((acc, c) => {
+      const [key, val] = c.trim().split("=");
+      if (key) acc[key] = decodeURIComponent(val || "");
+      return acc;
+    }, {} as Record<string, string>);
+
+    const decodeCookie = (cookieVal: string) => {
+      try {
+        const parts = cookieVal.split(".");
+        if (parts.length === 2) {
+          const payloadStr = atob(parts[0]);
+          return JSON.parse(payloadStr);
+        }
+        return JSON.parse(cookieVal);
+      } catch (e) {
+        return null;
+      }
+    };
+
+    if (cookies.wecollab_admin_profile) {
+      try {
+        const admin = JSON.parse(cookies.wecollab_admin_profile);
+        setSession({
+          role: "admin",
+          name: admin.fullName || "Admin",
+          dashboardUrl: "/admin",
+        });
+        return;
+      } catch (e) {}
+    }
+
+    if (cookies.brand_session) {
+      try {
+        const brand = decodeCookie(cookies.brand_session);
+        if (brand) {
+          setSession({
+            role: "brand",
+            name: brand.name || "Brand",
+            dashboardUrl: "/discover",
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+
+    if (cookies.employee_session) {
+      try {
+        const employee = decodeCookie(cookies.employee_session);
+        if (employee) {
+          setSession({
+            role: "employee",
+            name: employee.full_name || "Employee",
+            dashboardUrl: "/employee",
+          });
+          return;
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const handleSignOut = async () => {
+    if (session?.role === "admin") {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        await supabase.auth.signOut();
+      } catch (e) {}
+      localStorage.removeItem("wecollab_admin_profile");
+      document.cookie = "wecollab_admin_profile=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    } else if (session?.role === "brand") {
+      document.cookie = "brand_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    } else if (session?.role === "employee") {
+      try {
+        const { logoutEmployee } = await import("@/app/employee/actions");
+        await logoutEmployee();
+      } catch (e) {
+        document.cookie = "employee_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+    }
+    setSession(null);
+    window.location.reload();
+  };
 
   useMotionValueEvent(scrollY, "change", (y) => {
     setScrolled(y > 8);
@@ -59,21 +154,54 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-4 sm:flex">
-          <Link
-            href="/brand/login"
-            className="text-[0.9375rem] font-semibold text-slate-700 transition-colors hover:text-slate-900"
-          >
-            Login
-          </Link>
-          <Link
-            href="/brand/login"
-            className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-[1.1rem] py-2.5 text-[0.9375rem] font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800"
-          >
-            Join for Free
-            <span aria-hidden className="text-base leading-none">
-              →
-            </span>
-          </Link>
+          {mounted && session ? (
+            <>
+              <Link
+                href={session.dashboardUrl}
+                className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-[1.1rem] py-2.5 text-[0.9375rem] font-semibold text-white shadow-lg shadow-violet-600/15 transition hover:bg-violet-700"
+              >
+                Go to Console
+                <span aria-hidden className="text-base leading-none">
+                  →
+                </span>
+              </Link>
+              <div className="flex items-center gap-2 pl-2 border-l border-violet-100">
+                <div className="h-9 w-9 rounded-full bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-700 font-bold text-xs" title={`${session.name} (${session.role})`}>
+                  {session.name
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="text-[0.9375rem] font-semibold text-slate-500 hover:text-rose-600 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-rose-50"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/brand/login"
+                className="text-[0.9375rem] font-semibold text-slate-700 transition-colors hover:text-slate-900"
+              >
+                Login
+              </Link>
+              <Link
+                href="/brand/login"
+                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-[1.1rem] py-2.5 text-[0.9375rem] font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800"
+              >
+                Join for Free
+                <span aria-hidden className="text-base leading-none">
+                  →
+                </span>
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -104,20 +232,44 @@ export function Navbar() {
               </Link>
             ))}
             <hr className="my-2 border-violet-100/80" />
-            <Link
-              href="/brand/login"
-              className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-800"
-              onClick={() => setOpen(false)}
-            >
-              Login
-            </Link>
-            <Link
-              href="/brand/login"
-              className="mt-1 rounded-full bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white"
-              onClick={() => setOpen(false)}
-            >
-              Join for Free →
-            </Link>
+            {mounted && session ? (
+              <>
+                <Link
+                  href={session.dashboardUrl}
+                  className="rounded-xl bg-violet-50 text-violet-700 px-3 py-2.5 text-sm font-semibold hover:bg-violet-100 flex items-center justify-between"
+                  onClick={() => setOpen(false)}
+                >
+                  <span>Go to Console ({session.name})</span>
+                  <span>→</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    handleSignOut();
+                  }}
+                  className="mt-1 text-left rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 w-full"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/brand/login"
+                  className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-800"
+                  onClick={() => setOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/brand/login"
+                  className="mt-1 rounded-full bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white"
+                  onClick={() => setOpen(false)}
+                >
+                  Join for Free →
+                </Link>
+              </>
+            )}
           </div>
         </motion.div>
       ) : null}

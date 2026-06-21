@@ -17,6 +17,8 @@ const NAV_ITEMS = [
   { href: "/employee/reports",  label: "Reports",      icon: BarChart2 },
 ];
 
+import { verifySession } from "@/lib/supabase/session-crypto";
+
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
@@ -27,7 +29,10 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
 
   let sessionUser: { id: string; full_name: string; role: string; status: string } | null = null;
   try {
-    const session = JSON.parse(sessionCookie.value);
+    const session = verifySession(sessionCookie.value);
+    if (!session || !["employee", "admin", "senior_employee", "team_lead"].includes(session.role)) {
+      throw new Error("Invalid session");
+    }
     const { createAdminClient } = await import("@/lib/supabase/server");
     const supabase = await createAdminClient();
     const { data: employee } = await supabase

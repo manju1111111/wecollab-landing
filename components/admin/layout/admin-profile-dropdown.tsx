@@ -15,6 +15,11 @@ export function AdminProfileDropdown({ onLogout }: AdminProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -31,6 +36,12 @@ export function AdminProfileDropdown({ onLogout }: AdminProfileDropdownProps) {
     setIsOpen(false);
     setIsPanelOpen(true);
   };
+
+  if (!mounted) {
+    return (
+      <div className="h-10 w-28 rounded-full bg-slate-50 border border-slate-200/60 animate-pulse" />
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>

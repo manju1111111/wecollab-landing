@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { insertTask, updateTaskCompletion, updateTask as updateTaskFallback, deleteTask as deleteTaskFallback } from "@/lib/supabase/fallback-db";
 
 export async function addTask({
   employeeId,
@@ -16,20 +17,16 @@ export async function addTask({
 }) {
   const supabase = await createClient();
 
-  const { data: task, error } = await supabase
-    .from("employee_tasks")
-    .insert({
-      employee_id: employeeId,
-      title,
-      due_date: dueDate || null,
-      creator_id: creatorId || null,
-    })
-    .select()
-    .single();
+  const { data: task, error } = await insertTask(supabase, {
+    employee_id: employeeId,
+    title,
+    due_date: dueDate || null,
+    creator_id: creatorId || null,
+  });
 
   if (error) {
-    console.error("[ADD_TASK_ERROR]", error.message);
-    return { error: error.message };
+    console.error("[ADD_TASK_ERROR]", error);
+    return { error: "Failed to add task" };
   }
 
   revalidatePath("/employee");
@@ -42,23 +39,20 @@ export async function completeTask(taskId: string) {
   // Get task info before updating so we know employee ID and task title
   let taskData: { title: string; employee_id: string } | null = null;
   try {
-    const { data } = await supabase
-      .from("employee_tasks")
-      .select("title, employee_id")
-      .eq("id", taskId)
-      .single();
-    taskData = data;
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const allTasks = await getTasks(supabase);
+    const matched = allTasks.find((t: any) => t.id === taskId);
+    if (matched) {
+      taskData = { title: matched.title, employee_id: matched.employee_id };
+    }
   } catch (e) {
     console.error("[FETCH_TASK_PRE_COMPLETE_ERROR]", e);
   }
 
-  const { error } = await supabase
-    .from("employee_tasks")
-    .update({ completed_at: new Date().toISOString() })
-    .eq("id", taskId);
+  const { error } = await updateTaskCompletion(supabase, taskId, new Date().toISOString());
 
   if (error) {
-    console.error("[COMPLETE_TASK_ERROR]", error.message);
+    console.error("[COMPLETE_TASK_ERROR]", error);
   } else if (taskData) {
     // Trigger notification to admin
     try {
@@ -93,14 +87,11 @@ export async function updateTask(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("employee_tasks")
-    .update(updates)
-    .eq("id", taskId);
+  const { error } = await updateTaskFallback(supabase, taskId, updates);
 
   if (error) {
-    console.error("[UPDATE_TASK_ERROR]", error.message);
-    return { error: error.message };
+    console.error("[UPDATE_TASK_ERROR]", error);
+    return { error: "Failed to update task" };
   }
 
   revalidatePath("/employee");
@@ -110,12 +101,9 @@ export async function updateTask(
 export async function deleteTask(taskId: string) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("employee_tasks")
-    .delete()
-    .eq("id", taskId);
+  const { error } = await deleteTaskFallback(supabase, taskId);
 
-  if (error) console.error("[DELETE_TASK_ERROR]", error.message);
+  if (error) console.error("[DELETE_TASK_ERROR]", error);
   revalidatePath("/employee");
   return { success: !error };
 }

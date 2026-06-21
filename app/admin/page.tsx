@@ -1,72 +1,66 @@
-import { createClient } from "@/lib/supabase/server";
-import { PageHeader } from "@/components/admin/dashboard/page-header";
-import { OverviewMetricsStrip } from "@/components/admin/dashboard/overview-metrics-strip";
-import { AdminProfile } from "@/components/admin/dashboard/admin-profile";
-import { QuickActionsList } from "@/components/admin/dashboard/quick-actions-list";
-import { ProgressOverview } from "@/components/admin/dashboard/progress-overview";
-import { TimeTracker } from "@/components/admin/dashboard/time-tracker";
-import { EmployeeActivityList } from "@/components/admin/dashboard/employee-activity-list";
-import { OnboardingProgress } from "@/components/admin/dashboard/onboarding-progress";
-import { CreatorGrowthChart } from "@/components/admin/dashboard/creator-growth-chart";
-import { CreatorsByCategory } from "@/components/admin/dashboard/creators-by-category";
-import { PlatformDistribution } from "@/components/admin/dashboard/platform-distribution";
-import { UpcomingSchedule } from "@/components/admin/dashboard/upcoming-schedule";
-import { RecentActivityFeed } from "@/components/admin/dashboard/recent-activity-feed";
-import { TopSearchInsights } from "@/components/admin/dashboard/top-search-insights";
-import { TeamOverviewWidget } from "@/components/admin/dashboard/team-overview-widget";
-import { Scissors, CheckCircle, FileSpreadsheet, UserPlus } from "lucide-react";
+import { createAdminClient } from "@/lib/supabase/server";
+import { getTasks, getActivities } from "@/lib/supabase/fallback-db";
+import { AdminDashboardClient } from "@/components/admin/dashboard/admin-dashboard-client";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const supabase = await createClient();
-  
-  // 1. Fetch total creators
+  const supabase = await createAdminClient();
+
+  // 1. Fetch total creators count
   const { count: totalCreators } = await supabase
     .from("creators")
     .select("*", { count: "exact", head: true });
 
-  // 2. Fetch today's creators
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 2. Fetch active creators (verified creators)
+  const { count: activeCreators } = await supabase
+    .from("creators")
+    .select("*", { count: "exact", head: true })
+    .eq("verification_status", "Verified");
+
+  // 3. Fetch creators added today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
   const { count: newCreatorsToday } = await supabase
     .from("creators")
     .select("*", { count: "exact", head: true })
-    .gte("created_at", today.toISOString());
+    .gte("created_at", todayStart.toISOString());
 
-  // 3. Fetch pending verifications
+  // 4. Fetch pending verifications (ready for review)
   const { count: pendingVerifications } = await supabase
     .from("creators")
     .select("*", { count: "exact", head: true })
-    .eq("verified", false);
+    .eq("verification_status", "Ready for Review");
 
-  // 4. Fetch recent creators for activity feed
-  const { data: recentCreators } = await supabase
-    .from("creators")
-    .select("id, name, created_at, profile_image")
-    .order("created_at", { ascending: false })
-    .limit(5);
+  // 5. Fetch employees count
+  const { count: totalEmployees } = await supabase
+    .from("employees")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active");
 
-  const activities = recentCreators?.map(c => {
-    // calculate time ago roughly
-    const diff = Math.floor((new Date().getTime() - new Date(c.created_at).getTime()) / 60000);
-    const timeStr = diff < 60 ? `${diff} min ago` : `${Math.floor(diff/60)} hr ago`;
-    return {
-      type: "new_creator",
-      content: `New creator ${c.name} added`,
-      time: timeStr,
-      icon: c.profile_image || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80",
-      isImage: !!c.profile_image
-    };
-  }) || [];
+  // 6. Fetch employee activities (online/offline status)
+  const activitiesList = await getActivities(supabase);
+  const activeEmployeesToday = activitiesList.filter((a: any) => a.status !== "offline").length;
 
-  // 5. Fetch all creators to aggregate categories, platforms, and growth
+  // 7. Fetch all tasks
+  const allTasks = await getTasks(supabase);
+  const tasksPending = allTasks.filter((t: any) => !t.completed_at).length;
+
+  // 8. Fetch active campaigns
+  const { count: campaignsRunning } = await supabase
+    .from("campaigns")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active");
+
+  // 9. Fetch all creators for distribution & growth charts
   const { data: allCreators } = await supabase
     .from("creators")
-    .select("tags, platforms, created_at");
+    .select("tags, platforms, created_at, assigned_employee");
 
-  // Aggregate tags (categories)
+  // 10. Compute category and platform distributions
   const categoryCounts: Record<string, number> = {};
-  // Aggregate platforms
   const platformCounts: Record<string, number> = {};
+  const employeeCreatorCountMap: Record<string, number> = {};
 
   if (allCreators) {
     allCreators.forEach(c => {
@@ -77,10 +71,14 @@ export default async function AdminDashboard() {
       }
       if (c.platforms && Array.isArray(c.platforms)) {
         c.platforms.forEach((p: any) => {
-          if (p.name) {
-            platformCounts[p.name] = (platformCounts[p.name] || 0) + 1;
+          const pName = typeof p === 'string' ? p : p.name;
+          if (pName) {
+            platformCounts[pName] = (platformCounts[pName] || 0) + 1;
           }
         });
+      }
+      if (c.assigned_employee) {
+        employeeCreatorCountMap[c.assigned_employee] = (employeeCreatorCountMap[c.assigned_employee] || 0) + 1;
       }
     });
   }
@@ -108,127 +106,136 @@ export default async function AdminDashboard() {
       color: platformColors[i % platformColors.length]
     }));
 
-  // 6. Aggregate growth data (mocking the last 7 days based on actual DB creation dates for MVP)
+  // 11. Growth data (last 7 days cumulative)
   const growthDataMap: Record<string, number> = {};
+  const dateRange: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    dateRange.push(dateStr);
+    growthDataMap[dateStr] = 0;
+  }
+
   if (allCreators) {
-    allCreators.forEach((c: any) => {
-      // Assuming we selected created_at. Let's add it to the select query above!
+    allCreators.forEach(c => {
       if (c.created_at) {
-        const date = new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-        growthDataMap[date] = (growthDataMap[date] || 0) + 1;
+        const dateStr = new Date(c.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        if (dateStr in growthDataMap) {
+          growthDataMap[dateStr]++;
+        }
       }
     });
   }
 
-  // Convert map to sorted array of {name, value}
-  let cumulativeCount = 0;
-  const growthData = Object.entries(growthDataMap)
-    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-    .map(([date, count]) => {
-      cumulativeCount += count;
-      return { name: date, value: cumulativeCount };
-    });
+  // Cumulative sum
+  let cumulative = (totalCreators || 0) - Object.values(growthDataMap).reduce((a, b) => a + b, 0);
+  const growthData = dateRange.map(date => {
+    cumulative += growthDataMap[date];
+    return { name: date, value: cumulative };
+  });
 
-  // Fetch employees for TeamOverviewWidget
+  // 12. Team Overview Widget
   const { data: employeesData } = await supabase
     .from("employees")
-    .select("id, full_name, email, role, department, designation, phone, status, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, full_name, email, role, department, designation, status")
+    .eq("status", "active");
 
-  // Get assigned creator counts per employee
-  const { data: creatorCounts } = await supabase
-    .from("creators")
-    .select("assigned_employee");
-
-  const countMap: Record<string, number> = {};
-  (creatorCounts || []).forEach((c: any) => {
-    if (c.assigned_employee) {
-      countMap[c.assigned_employee] = (countMap[c.assigned_employee] || 0) + 1;
+  const employeeTaskCompletedMap: Record<string, number> = {};
+  allTasks.forEach((t: any) => {
+    if (t.completed_at && t.employee_id) {
+      employeeTaskCompletedMap[t.employee_id] = (employeeTaskCompletedMap[t.employee_id] || 0) + 1;
     }
   });
 
-  // Get completed task counts per employee
-  let taskCountMap: Record<string, number> = {};
-  try {
-    const { data: taskCounts } = await supabase
-      .from("employee_tasks")
-      .select("employee_id")
-      .not("completed_at", "is", null);
-
-    (taskCounts || []).forEach((t: any) => {
-      taskCountMap[t.employee_id] = (taskCountMap[t.employee_id] || 0) + 1;
-    });
-  } catch (e) {
-    // Table may not exist yet
-  }
-
   const enrichedEmployees = (employeesData || []).map(emp => ({
-    ...emp,
-    assigned_count: countMap[emp.id] || 0,
-    tasks_completed: taskCountMap[emp.id] || 0,
+    id: emp.id,
+    full_name: emp.full_name,
+    role: emp.role,
+    status: emp.status,
+    assigned_count: employeeCreatorCountMap[emp.id] || 0,
+    tasks_completed: employeeTaskCompletedMap[emp.id] || 0
   }));
 
-  return (
-    <div className="flex flex-col gap-8 w-full">
-      {/* Header */}
-      <PageHeader />
+  // 13. Upcoming Schedule (next tasks due)
+  const upcomingTasks = allTasks
+    .filter((t: any) => !t.completed_at && t.due_date)
+    .slice(0, 5)
+    .map((t: any) => {
+      const d = new Date(t.due_date);
+      return {
+        id: t.id,
+        title: t.title,
+        day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: d.toLocaleDateString('en-US', { day: '2-digit' }),
+        time: "09:00 AM",
+        creatorId: t.creator_id,
+        employeeId: t.employee_id
+      };
+    });
 
-      {/* Metrics Strip */}
-      <OverviewMetricsStrip 
-        totalCreators={totalCreators || 0}
-        activeCreators={totalCreators ? Math.floor(totalCreators * 0.8) : 0} // mock active
-        newCreatorsToday={newCreatorsToday || 0}
-        pendingVerifications={pendingVerifications || 0}
-      />
+  // 14. Recent Activity Log
+  const { data: activitiesLog } = await supabase
+    .from("employee_activity_log")
+    .select("id, employee_id, type, description, created_at")
+    .order("created_at", { ascending: false })
+    .limit(10);
 
-      {/* Main Complex Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full">
-        
-        {/* Left Column (Span 3) */}
-        <div className="xl:col-span-3 flex flex-col gap-6">
-          <AdminProfile />
-          <QuickActionsList />
-        </div>
+  const logWithEmployees = await Promise.all(
+    (activitiesLog || []).map(async (log) => {
+      const diff = Math.floor((new Date().getTime() - new Date(log.created_at).getTime()) / 60000);
+      const timeStr = diff < 1 ? "Just now" : diff < 60 ? `${diff}m ago` : `${Math.floor(diff/60)}h ago`;
 
-        {/* Right Area (Span 9) */}
-        <div className="xl:col-span-9 flex flex-col gap-6">
-          
-          {/* Row 1: Progress, Tracker, Activity, Onboarding */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <ProgressOverview />
-            <TimeTracker />
-            <EmployeeActivityList />
-            <TeamOverviewWidget employees={enrichedEmployees} />
-          </div>
-
-          {/* Row 2: Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <CreatorGrowthChart data={growthData} />
-            </div>
-            <div className="lg:col-span-1">
-              <CreatorsByCategory 
-                data={topCategories.length > 0 ? topCategories : undefined} 
-                total={totalCreators || 0}
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <PlatformDistribution 
-                data={topPlatforms.length > 0 ? topPlatforms : undefined}
-                total={totalCreators || 0}
-              />
-            </div>
-          </div>
-
-          {/* Row 3: Schedule, Activity, Insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <UpcomingSchedule />
-            <RecentActivityFeed activities={activities.length > 0 ? activities : undefined} />
-            <TopSearchInsights />
-          </div>
-
-        </div>
-      </div>
-    </div>
+      return {
+        type: log.type,
+        content: log.description,
+        time: timeStr,
+        icon: log.type === 'create' ? 'create' : log.type === 'verify' ? 'verify' : 'update',
+        isImage: false,
+        color: log.type === 'create' ? 'bg-indigo-100 text-indigo-500' : log.type === 'verify' ? 'bg-emerald-100 text-emerald-500' : 'bg-blue-100 text-blue-500'
+      };
+    })
   );
+
+  // 15. Search Insights
+  const { data: searchLogs } = await supabase
+    .from("search_logs")
+    .select("query");
+
+  const searchCounts: Record<string, number> = {};
+  (searchLogs || []).forEach(log => {
+    if (log.query) {
+      searchCounts[log.query] = (searchCounts[log.query] || 0) + 1;
+    }
+  });
+
+  const searchInsights = Object.entries(searchCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([query, searches]) => ({
+      query,
+      searches
+    }));
+
+  const initialStats = {
+    metrics: {
+      totalCreators: totalCreators || 0,
+      activeCreators: activeCreators || 0,
+      newCreatorsToday: newCreatorsToday || 0,
+      pendingVerifications: pendingVerifications || 0,
+      totalEmployees: totalEmployees || 0,
+      activeEmployeesToday,
+      tasksPending,
+      campaignsRunning: campaignsRunning ?? 0
+    },
+    topCategories,
+    topPlatforms,
+    growthData,
+    enrichedEmployees,
+    upcomingTasks,
+    activities: logWithEmployees,
+    searchInsights
+  };
+
+  return <AdminDashboardClient initialData={initialStats} />;
 }

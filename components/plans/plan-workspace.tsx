@@ -5,6 +5,8 @@ import { ChevronLeft, MoreHorizontal, Download, MessageSquare, Plus, Check, X, S
 import { CreateListModal } from "./create-list-modal";
 import { ColumnsModal, ColumnCategory } from "./columns-modal";
 import { PlanSummaryView } from "./plan-summary-view";
+import { RoiSimulatorView } from "./roi-simulator-view";
+import { OutreachView } from "./outreach-view";
 import { createClient } from "@/lib/supabase/client";
 import { getPlanDetails, updatePlanCBFWeights, addCreatorsToList, updatePlanDetails, removeCreatorFromList } from "@/app/plans/actions";
 import Image from "next/image";
@@ -59,7 +61,7 @@ export function PlanWorkspace({ plan, creatorsMap }: { plan: any, creatorsMap: a
   const [isColumnsOpen, setIsColumnsOpen] = useState(false);
   const [isCBFWeightsOpen, setIsCBFWeightsOpen] = useState(false);
   const [isAddInfluencersOpen, setIsAddInfluencersOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"list" | "summary">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "summary" | "roi" | "outreach">("list");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Inline details editing state
@@ -243,13 +245,13 @@ export function PlanWorkspace({ plan, creatorsMap }: { plan: any, creatorsMap: a
   };
 
   const handleSaveDetails = async () => {
-    if (!editName || !editBrand) {
-      alert("Name and Brand are required.");
-      return;
-    }
+    if (!editName) {
+        alert("Name is required.");
+        return;
+      }
     setIsSubmitting(true);
     try {
-      const res = await updatePlanDetails(planState.id, editName, editBrand, Number(editBudget) || 1000000);
+      const res = await updatePlanDetails(planState.id, editName, Number(editBudget) || 1000000);
       if (res.error) {
         alert(res.error);
       } else {
@@ -501,6 +503,22 @@ export function PlanWorkspace({ plan, creatorsMap }: { plan: any, creatorsMap: a
                 >
                   Summary
                 </button>
+                <button 
+                  onClick={() => setActiveTab("roi")}
+                  className={`px-4 py-1.5 rounded text-[12px] font-bold transition shadow-sm ${
+                    activeTab === "roi" ? "bg-slate-800 text-white" : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  📊 ROI Simulator
+                </button>
+                <button 
+                  onClick={() => setActiveTab("outreach")}
+                  className={`px-4 py-1.5 rounded text-[12px] font-bold transition shadow-sm ${
+                    activeTab === "outreach" ? "bg-slate-800 text-white" : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  ✉ Outreach
+                </button>
               </div>
             </div>
 
@@ -520,6 +538,19 @@ export function PlanWorkspace({ plan, creatorsMap }: { plan: any, creatorsMap: a
           {/* Dynamic Switch tab layouts */}
           {activeTab === "summary" ? (
             <PlanSummaryView
+              plan={planState}
+              activeList={activeList}
+              listCreators={sortedCreators}
+              onRefresh={handleRefresh}
+            />
+          ) : activeTab === "roi" ? (
+            <RoiSimulatorView
+              plan={planState}
+              activeList={activeList}
+              listCreators={sortedCreators}
+            />
+          ) : activeTab === "outreach" ? (
+            <OutreachView
               plan={planState}
               activeList={activeList}
               listCreators={sortedCreators}

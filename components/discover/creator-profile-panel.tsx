@@ -231,6 +231,154 @@ function CreatorAvatarPanel({ src, name, className = "h-24 w-24" }: { src?: stri
   );
 }
 
+function getEstimatedRates(followers: number, er: number, category: string) {
+  const erFactor = Math.max(0.7, Math.min(1.5, er / 3.0));
+  let story = 1500;
+  let post = 3000;
+  let reel = 4500;
+
+  if (followers > 500000) {
+    story = Math.round(followers * 0.05 * erFactor);
+    post = Math.round(followers * 0.08 * erFactor);
+    reel = Math.round(followers * 0.12 * erFactor);
+  } else if (followers > 100000) {
+    story = Math.round(followers * 0.07 * erFactor);
+    post = Math.round(followers * 0.11 * erFactor);
+    reel = Math.round(followers * 0.16 * erFactor);
+  } else if (followers > 10000) {
+    story = Math.round(followers * 0.10 * erFactor);
+    post = Math.round(followers * 0.15 * erFactor);
+    reel = Math.round(followers * 0.22 * erFactor);
+  } else {
+    story = Math.round(followers * 0.15 * erFactor);
+    post = Math.round(followers * 0.25 * erFactor);
+    reel = Math.round(followers * 0.35 * erFactor);
+  }
+
+  story = Math.max(800, Math.round(story / 100) * 100);
+  post = Math.max(1500, Math.round(post / 100) * 100);
+  reel = Math.max(2000, Math.round(reel / 100) * 100);
+
+  return { story, post, reel };
+}
+
+const WecollabScoreMeter = ({ score, er, followers }: { score: number; er: number; followers: number }) => {
+  const normalizedScore = Number(score.toFixed(1));
+  const strokeDashoffset = 2 * Math.PI * 40 - (normalizedScore / 10) * 2 * Math.PI * 40;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-6">
+      <div className="relative h-20 w-20 flex items-center justify-center shrink-0">
+        <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" strokeWidth="8" />
+          <circle 
+            cx="50" cy="50" 
+            r="40" 
+            fill="transparent" 
+            stroke="url(#scoreGradient)" 
+            strokeWidth="8" 
+            strokeDasharray={2 * Math.PI * 40} 
+            strokeDashoffset={strokeDashoffset} 
+            strokeLinecap="round" 
+          />
+          <defs>
+            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#ec4899" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="text-center relative z-10 flex flex-col leading-none">
+          <span className="text-xl font-black text-slate-800">{normalizedScore}</span>
+          <span className="text-[8px] font-black text-slate-400 mt-0.5">/10</span>
+        </div>
+      </div>
+      
+      <div className="flex-1 space-y-1.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-1 mb-1">
+          <span className="text-slate-800 font-extrabold">⚡ WECOLLAB PERF SCORE</span>
+          <span className="text-violet-600 font-extrabold normal-case">Excellent</span>
+        </div>
+        <div className="space-y-0.5 text-[9px] font-bold text-slate-405 normal-case">
+          <div className="flex justify-between">
+            <span>Reach Factor</span>
+            <span className="text-slate-700">{followers > 500000 ? "9.8" : followers > 100000 ? "8.5" : "7.2"}/10</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Engagement Quotient</span>
+            <span className="text-slate-700">{(er >= 5 ? 9.5 : er >= 3 ? 8.2 : 6.8).toFixed(1)}/10</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Consistency Rating</span>
+            <span className="text-slate-700">9.1/10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DemographicsMeter = ({ category }: { category: string }) => {
+  let femalePct = 52;
+  let malePct = 48;
+  
+  if (category === "Fashion" || category === "Beauty" || category === "Lifestyle") {
+    femalePct = 76;
+    malePct = 24;
+  } else if (category === "Gaming" || category === "Tech" || category === "Automotive") {
+    femalePct = 22;
+    malePct = 78;
+  } else if (category === "Fitness" || category === "Sports") {
+    femalePct = 40;
+    malePct = 60;
+  } else if (category === "Food" || category === "Travel") {
+    femalePct = 58;
+    malePct = 42;
+  }
+
+  const ageData = [
+    { range: "13-17", pct: 8 },
+    { range: "18-24", pct: 46 },
+    { range: "25-34", pct: 32 },
+    { range: "35-44", pct: 10 },
+    { range: "45+", pct: 4 },
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+      <div className="space-y-1.5">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Gender Distribution</h4>
+        <div className="flex justify-between text-[11px] font-bold text-slate-750">
+          <span className="text-blue-500">Male {malePct}%</span>
+          <span className="text-pink-500">Female {femalePct}%</span>
+        </div>
+        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
+          <div className="h-full bg-gradient-to-r from-blue-400 to-blue-500" style={{ width: `${malePct}%` }} />
+          <div className="h-full bg-gradient-to-r from-pink-400 to-pink-500" style={{ width: `${femalePct}%` }} />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Age Groups</h4>
+        <div className="space-y-1.5">
+          {ageData.map(item => (
+            <div key={item.range} className="flex items-center gap-3">
+              <span className="w-10 text-[10px] font-bold text-slate-550 shrink-0">{item.range}</span>
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden relative">
+                <div 
+                  className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full" 
+                  style={{ width: `${item.pct}%` }} 
+                />
+              </div>
+              <span className="w-8 text-right text-[10px] font-bold text-slate-700 shrink-0">{item.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function CreatorProfilePanel({
   creator,
   isOpen,
@@ -315,6 +463,15 @@ export function CreatorProfilePanel({
               </p>
             </div>
 
+            {/* Wecollab performance score */}
+            <div className="mt-6 px-6">
+              <WecollabScoreMeter 
+                score={creator.engagementRate > 5 ? 9.2 : creator.engagementRate > 3 ? 8.4 : 7.1} 
+                er={creator.engagementRate} 
+                followers={creator.totalFollowers} 
+              />
+            </div>
+
             {/* Stats Grid */}
             <div className="mt-6 px-6">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Key Metrics</h3>
@@ -375,10 +532,29 @@ export function CreatorProfilePanel({
                 ))}
               </div>
             </div>
-            {/* Concentric Pentagon Radar Match Chart */}
+            {/* Estimated Rates Brief */}
             <div className="mt-6 px-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Master Plan Fit Index</h3>
-              <RadarChart />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Estimated Pricing Brief</h3>
+              <div className="bg-white rounded-2xl border border-slate-205 p-4 shadow-sm grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Story</span>
+                  <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).story.toLocaleString()}</span>
+                </div>
+                <div className="border-l border-slate-100">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Post</span>
+                  <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).post.toLocaleString()}</span>
+                </div>
+                <div className="border-l border-slate-100">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Reel</span>
+                  <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).reel.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Audience Demographics */}
+            <div className="mt-6 px-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Audience Demographics</h3>
+              <DemographicsMeter category={creator.category} />
             </div>
 
             {/* Recent Posts Visual Grid Mockup */}

@@ -1,9 +1,11 @@
 "use client";
 
-import { Clock } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Clock } from "lucide-react";
+import { useAdminProfile } from "@/components/admin/layout/admin-profile-context";
 
 export function PageHeader() {
+  const { profile } = useAdminProfile();
   const [time, setTime] = useState(new Date());
   const [isClient, setIsClient] = useState(false);
 
@@ -18,11 +20,13 @@ export function PageHeader() {
   const timeString = time.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const dateString = time.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  const firstName = profile.fullName ? profile.fullName.split(" ")[0] : "Admin";
+
   return (
     <div className="flex items-start justify-between w-full">
       <div>
         <h1 className="text-3xl font-bold text-[#111827] tracking-tight flex items-center gap-2">
-          Welcome back, Alex! <span className="text-2xl">👋</span>
+          Welcome back, {isClient ? firstName : "Admin"}! <span className="text-2xl">👋</span>
         </h1>
         <p className="text-[#64748b] font-medium mt-1">
           Here's what's happening with WeCollab today.

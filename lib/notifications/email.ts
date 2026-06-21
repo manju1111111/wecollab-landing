@@ -160,3 +160,38 @@ export async function sendContractSignedEmail({
     html
   });
 }
+
+/**
+ * Dispatch password reset email to brand.
+ */
+export async function sendPasswordResetEmail({
+  to,
+  token,
+  resetUrl
+}: {
+  to: string;
+  token: string;
+  resetUrl: string;
+}) {
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+      <h2 style="color: #7166e5; margin-bottom: 6px;">Password Reset Request 🔑</h2>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6;">Hi,</p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6;">We received a request to reset the password for your WeCollab brand account. Click the button below to set a new password:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${resetUrl}" style="display: inline-block; background-color: #7166e5; color: #ffffff; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 9999px; font-size: 13px;">Reset Password</a>
+      </div>
+      <p style="font-size: 12px; color: #64748b; line-height: 1.6;">If you did not request a password reset, you can safely ignore this email. This link will expire in 1 hour.</p>
+      <p style="font-size: 12px; color: #94a3b8; word-break: break-all; margin-top: 16px;">Or copy and paste this link in your browser: <br/><a href="${resetUrl}" style="color: #7166e5; text-decoration: underline;">${resetUrl}</a></p>
+      <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
+      <p style="font-size: 11px; color: #94a3b8; text-align: center;">Sent automatically by WeCollab Integration Hub.</p>
+    </div>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `🔑 [WeCollab] Reset Your Password`,
+    html
+  });
+}
+

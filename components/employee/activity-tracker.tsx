@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { sendHeartbeat, upsertEmployeeActivity } from "@/app/employee/activity-actions";
 
+function broadcastActivityUpdate() {
+  try {
+    const bc = new BroadcastChannel("wecollab-updates");
+    bc.postMessage({ type: "ACTIVITY_UPDATE", timestamp: Date.now() });
+    bc.close();
+  } catch (_) {}
+}
+
 interface ActivityTrackerProps {
   employeeId: string;
 }
@@ -44,7 +52,7 @@ export function ActivityTracker({ employeeId }: ActivityTrackerProps) {
         employeeId,
         status: statusRef.current,
         currentActivity,
-      });
+      }).then(() => broadcastActivityUpdate());
     }
   }, [currentActivity, employeeId]);
 
@@ -56,7 +64,7 @@ export function ActivityTracker({ employeeId }: ActivityTrackerProps) {
       employeeId,
       status: "online",
       currentActivity: currentActivityRef.current,
-    });
+    }).then(() => broadcastActivityUpdate());
 
     // 2. Interaction Listeners to prevent Away status
     const updateInteraction = () => {
@@ -69,7 +77,7 @@ export function ActivityTracker({ employeeId }: ActivityTrackerProps) {
           employeeId,
           status: "online",
           currentActivity: currentActivityRef.current,
-        });
+        }).then(() => broadcastActivityUpdate());
       }
     };
 
@@ -135,7 +143,7 @@ export function ActivityTracker({ employeeId }: ActivityTrackerProps) {
         employeeId,
         status: e.detail.status,
         currentActivity: e.detail.status === "break" ? "On Break" : currentActivityRef.current
-      });
+      }).then(() => broadcastActivityUpdate());
     };
 
     window.addEventListener("employee-status-changed" as any, handleStatusUpdate);

@@ -328,8 +328,17 @@ export default function AdminBrandsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50/50">
-                {filteredBrands.map((b) => (
-                  <tr key={b.id} className="text-[12px] font-semibold text-slate-700 hover:bg-slate-50/50 transition">
+                {filteredBrands.map((b) => {
+                  const isActive = b.status === "active";
+                  return (
+                    <tr 
+                      key={b.id} 
+                      className={`text-[12px] font-semibold text-slate-700 transition border-l-4 ${
+                        isActive 
+                          ? "border-l-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/20" 
+                          : "border-l-slate-300 bg-slate-50/20 hover:bg-slate-50/30"
+                      }`}
+                    >
                     <td className="py-4 pl-3">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
@@ -364,7 +373,8 @@ export default function AdminBrandsPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           )}

@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import {
   Search,
   Lightbulb,
@@ -11,9 +14,41 @@ import {
   PieChart,
   Bell,
   Settings,
+  LogOut,
 } from "lucide-react";
 
-export default function DiscoverLayout({ children }: { children: ReactNode }) {
+export default async function DiscoverLayout({ children }: { children: ReactNode }) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("brand_session");
+  let initials = "M";
+
+  if (sessionCookie) {
+    try {
+      const session = verifySession(sessionCookie.value);
+      if (session && session.id) {
+        // Live query database to make sure brand name changes reflect instantly
+        const { createAdminClient } = await import("@/lib/supabase/server");
+        const supabase = await createAdminClient();
+        const { data: brand } = await supabase
+          .from("brands")
+          .select("name")
+          .eq("id", session.id)
+          .single();
+        
+        const brandName = brand?.name || session.name || "Brand";
+        initials = brandName
+          .split(" ")
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .slice(0, 1)
+          .join("")
+          .toUpperCase();
+      }
+    } catch (e) {
+      console.error("Failed to query live brand profile:", e);
+    }
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
       {/* Left Sidebar */}
@@ -61,11 +96,22 @@ export default function DiscoverLayout({ children }: { children: ReactNode }) {
             <Bell className="h-5 w-5" strokeWidth={1.5} />
             <span className="absolute right-2 top-2 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-[#1e2330]"></span>
           </button>
-          <button className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-800 hover:text-white transition-colors">
-            <MessageSquare className="h-5 w-5 text-green-400" strokeWidth={1.5} />
-          </button>
-          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white transition-colors hover:bg-slate-700">
-            M
+          
+          {sessionCookie && (
+            <form action={async () => {
+              "use server";
+              const { cookies } = await import("next/headers");
+              (await cookies()).delete("brand_session");
+              redirect("/brand/login");
+            }}>
+              <button type="submit" className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-slate-800 hover:text-rose-450 transition-colors cursor-pointer" title="Sign Out">
+                <LogOut className="h-5 w-5" strokeWidth={1.5} />
+              </button>
+            </form>
+          )}
+
+          <button className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white transition-colors hover:bg-slate-700" title={sessionCookie ? "Active Brand Session" : "Guest Mode"}>
+            {initials}
           </button>
           <div className="text-[10px] font-bold text-violet-400">28.4k</div>
         </div>

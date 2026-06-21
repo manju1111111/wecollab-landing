@@ -19,72 +19,46 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = process.env.APIFY_TOKEN;
-    if (!token) {
-      console.error("[INSTAGRAM_FETCH_ERROR] APIFY_TOKEN is missing in environment variables.");
+    const rapidApiKey = process.env.RAPIDAPI_KEY;
+    if (!rapidApiKey) {
+      console.error("[INSTAGRAM_FETCH_ERROR] RAPIDAPI_KEY is missing in environment variables.");
       return NextResponse.json(
-        { success: false, error: "Apify API configuration error. Missing APIFY_TOKEN." },
+        { success: false, error: "RapidAPI configuration error. Missing RAPIDAPI_KEY." },
         { status: 500 }
       );
     }
 
-    console.log(`[INSTAGRAM_FETCH] Scraping profile: @${cleanUsername} using Apify Instagram Scraper...`);
+    console.log(`[INSTAGRAM_FETCH] Scraping profile: @${cleanUsername} using Instagram Looter 2...`);
 
-    const runUrl = `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${token}`;
-
-    const scraperInput = {
-      resultsType: "details",
-      directUrls: [`https://www.instagram.com/${cleanUsername}/`],
-      resultsLimit: 1,
-      addParentData: false,
-    };
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
-
-    const response = await fetch(runUrl, {
-      method: "POST",
+    const response = await fetch(`https://instagram-looter2.p.rapidapi.com/profile?username=${encodeURIComponent(cleanUsername)}`, {
       headers: {
-        "Content-Type": "application/json",
+        "x-rapidapi-key": rapidApiKey,
+        "x-rapidapi-host": "instagram-looter2.p.rapidapi.com",
       },
-      body: JSON.stringify(scraperInput),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(30000), // 30 seconds timeout
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[INSTAGRAM_FETCH_ERROR] Apify returned status ${response.status}:`, errorText);
+      console.error(`[INSTAGRAM_FETCH_ERROR] RapidAPI returned status ${response.status}:`, errorText);
       return NextResponse.json(
-        { success: false, error: `Apify scraper failed with status ${response.status}.` },
+        { success: false, error: `Scraper API failed with status ${response.status}.` },
         { status: response.status }
       );
     }
 
-    const items = await response.json();
+    const item = await response.json();
 
-    if (!Array.isArray(items) || items.length === 0) {
-      console.error("[INSTAGRAM_FETCH_ERROR] Apify dataset items are empty or malformed.");
+    if (!item || item.status === false || !item.username) {
+      console.error("[INSTAGRAM_FETCH_ERROR] Profile not found or empty response from API:", item);
       return NextResponse.json(
-        { success: false, error: "Profile not found or scraper failed to extract data. Make sure the username is correct." },
+        { success: false, error: "Profile not found or scraper failed to extract data. Make sure the username is correct and public." },
         { status: 404 }
       );
     }
 
-    const item = items[0];
-
-    // Check for rate limit or scraping failure flags
-    if (item.error || item.message?.includes("block") || item.message?.includes("rate limit")) {
-      console.error("[INSTAGRAM_FETCH_ERROR] Scraper encountered blocks/limits:", item);
-      return NextResponse.json(
-        { success: false, error: "Instagram has rate limited or blocked the scraper temporarily. Please try again later." },
-        { status: 429 }
-      );
-    }
-
     // Strict validation for public profiles only
-    if (item.private === true || item.isPrivate === true) {
+    if (item.is_private === true) {
       console.warn(`[INSTAGRAM_FETCH] Attempted to scrape private profile: @${cleanUsername}`);
       return NextResponse.json(
         { success: false, error: "Private profile: WeCollab only supports importing public profiles." },
@@ -93,14 +67,16 @@ export async function POST(req: Request) {
     }
 
     // Extract metrics and calculate averages
-    const followers = item.followersCount || 0;
-    const follows = item.followsCount || 0;
-    const postsCount = item.postsCount || 0;
+    const followers = item.edge_followed_by?.count || 0;
+    const follows = item.edge_follow?.count || 0;
+    const postsCount = item.edge_owner_to_timeline_media?.count || 0;
 
     let avgViews = 0;
     let engagementRate = 0;
 
-    const posts = item.latestPosts || item.posts || [];
+    const posts: any[] = item.edge_owner_to_timeline_media?.edges || [];
+    const captionsList: string[] = [];
+
     if (posts.length > 0) {
       let totalLikes = 0;
       let totalComments = 0;
@@ -108,13 +84,20 @@ export async function POST(req: Request) {
       let totalVideoViews = 0;
 
       posts.forEach((p: any) => {
-        totalLikes += p.likesCount || p.likes || 0;
-        totalComments += p.commentsCount || p.comments || 0;
+        const node = p.node || {};
+        totalLikes += node.edge_liked_by?.count || node.edge_media_preview_like?.count || 0;
+        totalComments += node.edge_media_to_comment?.count || 0;
 
-        const views = p.videoPlayCount || p.videoViewCount || p.playCount || p.views || 0;
-        if (views > 0) {
+        const views = node.video_view_count || 0;
+        if (node.is_video === true || views > 0) {
           totalVideoViews += views;
           videoPostCount++;
+        }
+
+        // Extract caption text
+        const captionText = node.edge_media_to_caption?.edges?.[0]?.node?.text || "";
+        if (captionText) {
+          captionsList.push(captionText);
         }
       });
 
@@ -140,7 +123,7 @@ export async function POST(req: Request) {
     }
 
     let base64ProfilePic = "";
-    const imgUrl = item.profilePicUrlHD || item.profilePicUrl;
+    const imgUrl = item.profile_pic_url_hd || item.profile_pic_url;
     if (imgUrl) {
       try {
         console.log(`[INSTAGRAM_FETCH] Fetching profile image for base64 conversion: ${imgUrl}`);
@@ -168,21 +151,20 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       username: item.username || cleanUsername,
-      fullName: item.fullName || item.username || cleanUsername,
+      fullName: item.full_name || item.username || cleanUsername,
       biography: item.biography || "",
       followersCount: followers,
       followsCount: follows,
       postsCount: postsCount,
       // profilePicUrl = original CDN URL (lightweight — stored in Supabase profile_image & Algolia)
-      // This persists because the base64 conversion already proved the URL was accessible.
-      profilePicUrl: item.profilePicUrlHD || item.profilePicUrl || "",
+      profilePicUrl: item.profile_pic_url_hd || item.profile_pic_url || "",
       // profilePicBase64 = base64 blob only for in-browser admin preview rendering
-      // (Instagram CDN URLs work server-side but may have CORS issues in browser)
       profilePicBase64: base64ProfilePic || "",
-      verified: !!item.verified,
+      verified: !!item.is_verified,
       engagementRate: engagementRate,
       avgViews: avgViews,
       location: location,
+      captions: captionsList,
     });
   } catch (error: any) {
     console.error("[INSTAGRAM_FETCH_CATCH_ERROR]", error);

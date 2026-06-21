@@ -1,14 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { AssignedCreatorsTable } from "@/components/employee/assigned-creators-table";
 
 export default async function EmployeeCreatorsPage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
   if (!sessionCookie) redirect("/employee/login");
-  let session: { id: string; role: string };
-  try { session = JSON.parse(sessionCookie.value); } catch { redirect("/employee/login"); }
+  const session = verifySession(sessionCookie.value);
+  if (!session) redirect("/employee/login");
 
   const supabase = await createAdminClient();
 

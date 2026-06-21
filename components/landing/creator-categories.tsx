@@ -19,6 +19,8 @@ import type { LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionShell } from "./section-shell";
+
+const MotionLink = motion(Link);
 import { TrustedBy } from "./trusted-by";
 
 const stats: { icon: LucideIcon; title: string; subtitle: string }[] = [
@@ -182,27 +184,25 @@ export function CreatorCategories() {
               />
               <div className="relative z-10 p-5 sm:p-6 md:p-7">
               <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-              <Link href="/discover" passHref legacyBehavior>
-                <motion.a
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[0.9375rem] font-semibold tracking-tight text-white shadow-md shadow-slate-900/20 ring-1 ring-white/10 transition hover:bg-slate-800 hover:shadow-lg"
-                >
-                  Explore Creator Filters
-                  <span aria-hidden className="text-base">
-                    →
-                  </span>
-                </motion.a>
-              </Link>
-              <Link href="/discover" passHref legacyBehavior>
-                <motion.a
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="inline-flex min-h-[3rem] items-center justify-center rounded-full border border-slate-200/90 bg-white px-6 py-2.5 text-[0.9375rem] font-semibold tracking-tight text-slate-900 shadow-sm shadow-slate-900/[0.04] ring-1 ring-inset ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50/80"
-                >
-                  View All Categories
-                </motion.a>
-              </Link>
+              <MotionLink
+                href="/discover"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[0.9375rem] font-semibold tracking-tight text-white shadow-md shadow-slate-900/20 ring-1 ring-white/10 transition hover:bg-slate-800 hover:shadow-lg"
+              >
+                Explore Creator Filters
+                <span aria-hidden className="text-base">
+                  →
+                </span>
+              </MotionLink>
+              <MotionLink
+                href="/discover"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex min-h-[3rem] items-center justify-center rounded-full border border-slate-200/90 bg-white px-6 py-2.5 text-[0.9375rem] font-semibold tracking-tight text-slate-900 shadow-sm shadow-slate-900/[0.04] ring-1 ring-inset ring-slate-900/[0.04] transition hover:border-slate-300 hover:bg-slate-50/80"
+              >
+                View All Categories
+              </MotionLink>
             </div>
 
             <div className="my-5 h-px w-full bg-slate-200/95 sm:my-6" aria-hidden />

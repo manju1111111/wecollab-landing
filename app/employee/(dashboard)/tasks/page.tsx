@@ -1,14 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { TaskFeed } from "@/components/employee/task-feed";
 
 export default async function EmployeeTasksPage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
   if (!sessionCookie) redirect("/employee/login");
-  let session: { id: string; role: string };
-  try { session = JSON.parse(sessionCookie.value); } catch { redirect("/employee/login"); }
+  const session = verifySession(sessionCookie.value);
+  if (!session) redirect("/employee/login");
 
   const supabase = await createAdminClient();
 
@@ -24,13 +25,10 @@ export default async function EmployeeTasksPage() {
 
     const creatorMap = new Map((creators || []).map(c => [c.id, c.name]));
 
-    const { data: rawTasks } = await supabase
-      .from("employee_tasks")
-      .select("id, title, due_date, completed_at, creator_id")
-      .eq("employee_id", session.id)
-      .order("created_at", { ascending: false });
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const rawTasks = await getTasks(supabase, session.id);
 
-    tasks = (rawTasks || []).map(t => ({
+    tasks = (rawTasks || []).map((t: any) => ({
       ...t,
       creator_name: t.creator_id ? creatorMap.get(t.creator_id) : undefined,
     }));
@@ -38,8 +36,8 @@ export default async function EmployeeTasksPage() {
     console.warn("[TASKS_PAGE] fetch error:", e);
   }
 
-  const pending = tasks.filter(t => !t.completed_at).length;
-  const done = tasks.filter(t => t.completed_at).length;
+  const pending = tasks.filter((t: any) => !t.completed_at).length;
+  const done = tasks.filter((t: any) => t.completed_at).length;
 
   return (
     <div className="flex flex-col gap-6">

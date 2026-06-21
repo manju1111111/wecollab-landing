@@ -49,17 +49,44 @@ export function AdminProfileProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("wecollab_admin_profile");
     if (saved) {
       try {
-        setProfile(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setProfile(parsed);
+        // Write to cookie to sync with SSR
+        document.cookie = `wecollab_admin_profile=${encodeURIComponent(saved)}; path=/; max-age=31536000; SameSite=Lax`;
       } catch (e) {
         console.error("Failed to parse profile data");
       }
+    } else {
+      // Write defaultProfile to localStorage and cookie if not present
+      localStorage.setItem("wecollab_admin_profile", JSON.stringify(defaultProfile));
+      document.cookie = `wecollab_admin_profile=${encodeURIComponent(JSON.stringify(defaultProfile))}; path=/; max-age=31536000; SameSite=Lax`;
     }
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "wecollab_admin_profile" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setProfile(parsed);
+          document.cookie = `wecollab_admin_profile=${encodeURIComponent(e.newValue)}; path=/; max-age=31536000; SameSite=Lax`;
+        } catch (err) {
+          console.error("Failed to parse profile data from storage event", err);
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   const updateProfile = (data: Partial<ProfileData>) => {
     setProfile(prev => {
       const updated = { ...prev, ...data };
-      localStorage.setItem("wecollab_admin_profile", JSON.stringify(updated));
+      const serialized = JSON.stringify(updated);
+      localStorage.setItem("wecollab_admin_profile", serialized);
+      // Write to cookie as well
+      document.cookie = `wecollab_admin_profile=${encodeURIComponent(serialized)}; path=/; max-age=31536000; SameSite=Lax`;
       return updated;
     });
   };

@@ -1,6 +1,7 @@
 "use client";
 
-import { X, ExternalLink, Mail, MessageSquare, Briefcase, MapPin, TrendingUp, MoreVertical, Edit, UserX } from "lucide-react";
+import { useState } from "react";
+import { X, ExternalLink, Mail, MessageSquare, Briefcase, MapPin, TrendingUp, MoreVertical, Edit, UserX, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
@@ -15,6 +16,31 @@ export function QuickPreviewDrawer({
   onClose: () => void;
   onEdit: (creator: any) => void;
 }) {
+  const [isRecategorizing, setIsRecategorizing] = useState(false);
+
+  const handleRecategorize = async () => {
+    if (!creator) return;
+    setIsRecategorizing(true);
+    try {
+      const res = await fetch("/api/admin/categorize-pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: creator.username, creatorId: creator.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Creator successfully re-categorized!");
+        window.location.reload();
+      } else {
+        alert("Failed to re-categorize: " + data.error);
+      }
+    } catch (e: any) {
+      alert("Error occurred: " + e.message);
+    } finally {
+      setIsRecategorizing(false);
+    }
+  };
+
   if (!creator) return null;
 
   return (
@@ -141,15 +167,22 @@ export function QuickPreviewDrawer({
         {/* Footer Actions */}
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
           <button 
+            onClick={handleRecategorize}
+            disabled={isRecategorizing}
+            className="flex-1 flex items-center justify-center gap-2 h-10 bg-indigo-650 hover:bg-indigo-750 text-white disabled:opacity-50 text-[13px] font-bold rounded-xl transition-all shadow-sm"
+          >
+            <Sparkles className="h-4 w-4" /> {isRecategorizing ? "Categorizing..." : "Re-categorize"}
+          </button>
+          <button 
             onClick={() => {
               onEdit(creator);
               onClose();
             }}
-            className="flex-1 flex items-center justify-center gap-2 h-10 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 text-slate-700 text-[14px] font-bold rounded-xl transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 h-10 bg-white border border-slate-200 hover:bg-slate-50 hover:text-indigo-600 text-slate-700 text-[13px] font-bold rounded-xl transition-colors"
           >
             <Edit className="h-4 w-4" /> Edit Profile
           </button>
-          <button className="h-10 px-4 flex items-center justify-center bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[14px] font-bold rounded-xl transition-colors">
+          <button className="h-10 px-4 flex items-center justify-center bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[13px] font-bold rounded-xl transition-colors">
             <UserX className="h-4 w-4" />
           </button>
         </div>

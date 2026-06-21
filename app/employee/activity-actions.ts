@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/server";
+import { updateActivityStatus } from "@/lib/supabase/fallback-db";
 
 /**
  * Upserts or updates the live activity status and current activity for an employee.
@@ -18,48 +19,16 @@ export async function upsertEmployeeActivity({
   try {
     const supabase = await createAdminClient();
 
-    // Check if transition is from offline (or row doesn't exist) to set session_start
-    let shouldStartSession = false;
-    try {
-      const { data: existing } = await supabase
-        .from("employee_activity")
-        .select("status")
-        .eq("employee_id", employeeId)
-        .single();
-      
-      if (!existing || existing.status === "offline") {
-        shouldStartSession = true;
-      }
-    } catch (e) {
-      // Row probably doesn't exist
-      shouldStartSession = true;
-    }
-
-    const updatePayload: any = {
-      employee_id: employeeId,
+    const { error } = await updateActivityStatus(
+      supabase,
+      employeeId,
       status,
-      last_active: new Date().toISOString(),
-    };
-
-    if (currentActivity !== undefined) {
-      updatePayload.current_activity = currentActivity || null;
-    }
-
-    if (shouldStartSession && status !== "offline") {
-      updatePayload.session_start = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from("employee_activity")
-      .upsert(updatePayload, { onConflict: "employee_id" });
+      currentActivity
+    );
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        console.warn(`[ACTIVITY_ACTION] Table 'employee_activity' not created. Skipped status '${status}'.`);
-        return { success: true, isMock: true };
-      }
       console.error("[UPSERT_ACTIVITY_ERROR]", error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as any).message };
     }
 
     return { success: true };
@@ -84,26 +53,16 @@ export async function sendHeartbeat({
   try {
     const supabase = await createAdminClient();
 
-    const updatePayload: any = {
-      employee_id: employeeId,
+    const { error } = await updateActivityStatus(
+      supabase,
+      employeeId,
       status,
-      last_active: new Date().toISOString(),
-    };
-
-    if (currentActivity !== undefined) {
-      updatePayload.current_activity = currentActivity || null;
-    }
-
-    const { error } = await supabase
-      .from("employee_activity")
-      .upsert(updatePayload, { onConflict: "employee_id" });
+      currentActivity
+    );
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        return { success: true, isMock: true };
-      }
       console.error("[HEARTBEAT_ERROR]", error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as any).message };
     }
 
     return { success: true };
@@ -120,21 +79,16 @@ export async function setOffline(employeeId: string) {
   try {
     const supabase = await createAdminClient();
 
-    const { error } = await supabase
-      .from("employee_activity")
-      .upsert({
-        employee_id: employeeId,
-        status: "offline",
-        last_active: new Date().toISOString(),
-        current_activity: null,
-      }, { onConflict: "employee_id" });
+    const { error } = await updateActivityStatus(
+      supabase,
+      employeeId,
+      "offline",
+      null
+    );
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        return { success: true, isMock: true };
-      }
       console.error("[SET_OFFLINE_ERROR]", error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as any).message };
     }
 
     return { success: true };

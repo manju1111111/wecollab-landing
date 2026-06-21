@@ -31,13 +31,21 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Bulk Mode state
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkInput, setBulkInput] = useState("");
+  const [createdCount, setCreatedCount] = useState(0);
+
   useEffect(() => {
     if (isOpen) {
       setSuccess(false);
       setTitle("");
+      setBulkInput("");
       setDueDate("");
       setSelectedEmployee("");
       setSelectedCreator("");
+      setIsBulkMode(false);
+      setCreatedCount(0);
 
       // Fetch employees
       fetch("/api/admin/employees")
@@ -61,31 +69,105 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = async () => {
-    if (!selectedEmployee || !title.trim()) return;
-    setIsSubmitting(true);
+  const parseInstagramInput = (input: string): string[] => {
+    return input
+      .split(/[\n,]+/)
+      .map(item => {
+        let clean = item.trim();
+        if (!clean) return "";
+        // Remove url prefix
+        clean = clean.replace(/https?:\/\/(www\.)?instagram\.com\//, "");
+        // Remove trailing slashes and query parameters
+        clean = clean.split(/[?\/]/)[0];
+        // Remove leading @
+        if (clean.startsWith("@")) clean = clean.substring(1);
+        return clean.trim();
+      })
+      .filter(Boolean);
+  };
 
-    try {
-      const res = await fetch("/api/admin/push-task", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId: selectedEmployee,
-          title: title.trim(),
-          dueDate: dueDate || null,
-          creatorId: selectedCreator || null,
-        }),
-      });
-      if (res.ok) {
-        setSuccess(true);
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to create task");
+  const handleSubmit = async () => {
+    if (!selectedEmployee) return;
+
+    if (isBulkMode) {
+      const usernames = parseInstagramInput(bulkInput);
+      if (usernames.length === 0) {
+        alert("Please enter at least one valid Instagram username or URL.");
+        return;
       }
-    } catch (e) {
-      alert("Network error");
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(true);
+      let successCount = 0;
+      try {
+        await Promise.all(
+          usernames.map(async (username) => {
+            // Find matched creator to assign creator_id
+            const matchedCreator = creators.find(
+              c => c.username?.toLowerCase() === username.toLowerCase() || 
+                   c.name?.toLowerCase() === username.toLowerCase()
+            );
+            
+            const res = await fetch("/api/admin/push-task", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                employeeId: selectedEmployee,
+                title: `Instagram Outreach & Research: @${username}`,
+                dueDate: dueDate || null,
+                creatorId: matchedCreator ? matchedCreator.id : null,
+              }),
+            });
+            if (res.ok) {
+              successCount++;
+            }
+          })
+        );
+        if (successCount > 0) {
+          setCreatedCount(successCount);
+          setSuccess(true);
+          try {
+            const bc = new BroadcastChannel("wecollab-updates");
+            bc.postMessage({ type: "TASK_UPDATE" });
+            bc.close();
+          } catch (e) {}
+        } else {
+          alert("Failed to push bulk tasks.");
+        }
+      } catch (e) {
+        alert("Network error occurred during bulk assignment.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      if (!title.trim()) return;
+      setIsSubmitting(true);
+      try {
+        const res = await fetch("/api/admin/push-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: selectedEmployee,
+            title: title.trim(),
+            dueDate: dueDate || null,
+            creatorId: selectedCreator || null,
+          }),
+        });
+        if (res.ok) {
+          setCreatedCount(1);
+          setSuccess(true);
+          try {
+            const bc = new BroadcastChannel("wecollab-updates");
+            bc.postMessage({ type: "TASK_UPDATE" });
+            bc.close();
+          } catch (e) {}
+        } else {
+          const data = await res.json();
+          alert(data.error || "Failed to create task");
+        }
+      } catch (e) {
+        alert("Network error");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -116,17 +198,31 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
             <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
               <Send className="h-7 w-7 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">Task Pushed!</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">Tasks Pushed!</h3>
             <p className="text-[14px] text-slate-600 mb-6">
-              <strong>"{title}"</strong> has been sent to <strong>{emp?.full_name}</strong>.
+              {isBulkMode ? (
+                <>
+                  Successfully pushed <strong>{createdCount} Instagram outreach tasks</strong> to <strong>{emp?.full_name}</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>"{title}"</strong> has been sent to <strong>{emp?.full_name}</strong>.
+                </>
+              )}
               It will appear in their task feed immediately.
             </p>
             <div className="flex gap-3 w-full">
               <button
-                onClick={() => { setSuccess(false); setTitle(""); setDueDate(""); setSelectedCreator(""); }}
+                onClick={() => { 
+                  setSuccess(false); 
+                  setTitle(""); 
+                  setBulkInput("");
+                  setDueDate(""); 
+                  setSelectedCreator(""); 
+                }}
                 className="flex-1 h-11 rounded-xl border border-slate-200 text-slate-700 font-bold text-[14px] hover:bg-slate-50 transition-colors"
               >
-                Push Another
+                Push More
               </button>
               <button
                 onClick={onClose}
@@ -156,21 +252,62 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
               </select>
             </div>
 
-            {/* Task Title */}
-            <div className="space-y-1.5">
-              <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" /> Task Description
-              </label>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. Contact @virat about campaign proposal"
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
+            {/* Assignment Mode Segmented Control */}
+            <div className="flex bg-slate-100 rounded-xl p-0.5 text-[11px] font-extrabold max-w-fit shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsBulkMode(false)}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  !isBulkMode ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-750"
+                }`}
+              >
+                Single Task
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsBulkMode(true)}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  isBulkMode ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-750"
+                }`}
+              >
+                Bulk Instagram Outreach
+              </button>
             </div>
 
-            {/* Due Date + Creator (side by side) */}
-            <div className="grid grid-cols-2 gap-4">
+            {isBulkMode ? (
+              /* Bulk Input Area */
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> Instagram URLs or Usernames
+                </label>
+                <textarea
+                  value={bulkInput}
+                  onChange={e => setBulkInput(e.target.value)}
+                  rows={4}
+                  placeholder={`e.g.\n@cristiano\nhttps://instagram.com/leomessi\nneymarjr`}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder-slate-400 font-mono"
+                />
+                <p className="text-[11px] text-slate-400 font-semibold leading-normal">
+                  Enter one username or URL per line. We will automatically parse clean handles and match them against existing creator profiles.
+                </p>
+              </div>
+            ) : (
+              /* Single Task Input */
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> Task Description
+                </label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="e.g. Contact @virat about campaign proposal"
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder-slate-400"
+                />
+              </div>
+            )}
+
+            {/* Due Date + Creator */}
+            <div className={!isBulkMode ? "grid grid-cols-2 gap-4" : "w-full"}>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Due Date
@@ -179,25 +316,27 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
                   type="date"
                   value={dueDate}
                   onChange={e => setDueDate(e.target.value)}
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5" /> Link Creator
-                </label>
-                <select
-                  value={selectedCreator}
-                  onChange={e => setSelectedCreator(e.target.value)}
-                  disabled={!selectedEmployee}
-                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none disabled:opacity-50"
-                >
-                  <option value="">None</option>
-                  {creators.map(c => (
-                    <option key={c.id} value={c.id}>@{c.username} — {c.name}</option>
-                  ))}
-                </select>
-              </div>
+              {!isBulkMode && (
+                <div className="space-y-1.5">
+                  <label className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5" /> Link Creator
+                  </label>
+                  <select
+                    value={selectedCreator}
+                    onChange={e => setSelectedCreator(e.target.value)}
+                    disabled={!selectedEmployee}
+                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none disabled:opacity-50 text-slate-800"
+                  >
+                    <option value="">None</option>
+                    {creators.map(c => (
+                      <option key={c.id} value={c.id}>@{c.username} — {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Submit */}
@@ -207,8 +346,13 @@ export function AdminTaskModal({ isOpen, onClose }: AdminTaskModalProps) {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={!selectedEmployee || !title.trim() || isSubmitting}
-                className="px-6 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[14px] font-bold shadow-sm shadow-indigo-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+                disabled={
+                  !selectedEmployee || 
+                  isSubmitting ||
+                  (!isBulkMode && !title.trim()) ||
+                  (isBulkMode && !bulkInput.trim())
+                }
+                className="px-6 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-750 text-white text-[14px] font-bold shadow-sm shadow-indigo-200 transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 <Send className="h-4 w-4" />
                 {isSubmitting ? "Pushing..." : "Push Task"}

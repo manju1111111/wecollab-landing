@@ -4,6 +4,14 @@ import { useState, useTransition, useEffect } from "react";
 import { Plus, Check, Clock, Trash2, LayoutGrid, ListTodo, AlertTriangle, CheckCircle2, GripVertical } from "lucide-react";
 import { addTask, completeTask, deleteTask, updateTask } from "@/app/employee/task-actions";
 
+function broadcastTaskUpdate() {
+  try {
+    const bc = new BroadcastChannel("wecollab-updates");
+    bc.postMessage({ type: "TASK_UPDATE", timestamp: Date.now() });
+    bc.close();
+  } catch (_) {}
+}
+
 interface Task {
   id: string;
   title: string;
@@ -84,17 +92,18 @@ export function TaskFeed({ tasks: initialTasks, employeeId, creators }: TaskFeed
       if (result.task) {
         setTasks(prev => prev.map(t => t.id === optimistic.id ? { ...result.task, creator_name: creator?.name } : t));
       }
+      broadcastTaskUpdate();
     });
   };
 
   const handleComplete = (id: string) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, completed_at: new Date().toISOString() } : t));
-    startTransition(async () => { await completeTask(id); });
+    startTransition(async () => { await completeTask(id); broadcastTaskUpdate(); });
   };
 
   const handleDelete = (id: string) => {
     setTasks(prev => prev.filter(t => t.id !== id));
-    startTransition(async () => { await deleteTask(id); });
+    startTransition(async () => { await deleteTask(id); broadcastTaskUpdate(); });
   };
 
   const handleMoveTask = (taskId: string, targetCol: ColumnId) => {
@@ -111,6 +120,7 @@ export function TaskFeed({ tasks: initialTasks, employeeId, creators }: TaskFeed
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed_at: updatedCompletedAt } : t));
       startTransition(async () => {
         await completeTask(taskId);
+        broadcastTaskUpdate();
       });
       return;
     }
@@ -134,6 +144,7 @@ export function TaskFeed({ tasks: initialTasks, employeeId, creators }: TaskFeed
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed_at: updatedCompletedAt, due_date: updatedDueDate } : t));
     startTransition(async () => {
       await updateTask(taskId, { completed_at: updatedCompletedAt, due_date: updatedDueDate });
+      broadcastTaskUpdate();
     });
   };
 

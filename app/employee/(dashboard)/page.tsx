@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { EmployeeMetricsStrip } from "@/components/employee/metrics-strip";
 import { TaskFeed } from "@/components/employee/task-feed";
 import { AssignedCreatorsTable } from "@/components/employee/assigned-creators-table";
@@ -12,12 +13,8 @@ export default async function EmployeeDashboardPage() {
   const sessionCookie = cookieStore.get("employee_session");
   if (!sessionCookie) redirect("/employee/login");
   
-  let session: { id: string; role: string; full_name: string };
-  try {
-    session = JSON.parse(sessionCookie.value);
-  } catch {
-    redirect("/employee/login");
-  }
+  const session = verifySession(sessionCookie.value);
+  if (!session) redirect("/employee/login");
 
   const supabase = await createAdminClient();
 
@@ -59,14 +56,11 @@ export default async function EmployeeDashboardPage() {
   // Fetch tasks
   let tasks: any[] = [];
   try {
-    const { data: rawTasks } = await supabase
-      .from("employee_tasks")
-      .select("id, title, due_date, completed_at, creator_id")
-      .eq("employee_id", session.id)
-      .order("created_at", { ascending: false });
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const rawTasks = await getTasks(supabase, session.id);
 
     const creatorMap = new Map(assignedCreators.map(c => [c.id, c]));
-    tasks = (rawTasks || []).map(t => ({
+    tasks = (rawTasks || []).map((t: any) => ({
       ...t,
       creator_name: t.creator_id ? creatorMap.get(t.creator_id)?.name : undefined,
       creator_username: t.creator_id ? creatorMap.get(t.creator_id)?.username : undefined,
@@ -76,8 +70,8 @@ export default async function EmployeeDashboardPage() {
   }
 
   // Metrics
-  const completedTasks = tasks.filter(t => t.completed_at).length;
-  const pendingTasks = tasks.filter(t => !t.completed_at).length;
+  const completedTasks = tasks.filter((t: any) => t.completed_at).length;
+  const pendingTasks = tasks.filter((t: any) => !t.completed_at).length;
   const avgER = assignedCreators.length > 0
     ? parseFloat((assignedCreators.reduce((s, c) => s + (c.engagement_rate || 0), 0) / assignedCreators.length).toFixed(1))
     : 0;

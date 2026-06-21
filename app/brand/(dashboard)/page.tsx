@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Award, Check, X, ShieldAlert, Sparkles, TrendingUp, Users, HeartHandshake } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getBrandSession } from "@/app/brand/actions";
 
 interface CampaignProposal {
   id: string;
@@ -31,13 +32,8 @@ export default function BrandOverviewPage() {
       const supabase = createClient();
 
       // Get brand details from cookies to query matching campaigns
-      const sessionData = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("brand_session="))
-        ?.split("=")[1];
-
-      if (!sessionData) return;
-      const session = JSON.parse(decodeURIComponent(sessionData));
+      const session = await getBrandSession();
+      if (!session) return;
 
       // 1. Fetch campaigns for this brand
       const { data: campaigns, error: campErr } = await supabase

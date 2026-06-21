@@ -167,8 +167,22 @@ export default function AdminEmployeesPage() {
                 {filtered.map(emp => {
                   const badge = STATUS_BADGE[emp.status] || STATUS_BADGE.active;
                   const roleColor = ROLE_COLORS[emp.role] || ROLE_COLORS.Employee;
+                  const status = emp.status || "active";
+                  const isActive = status === "active";
+                  const isInvited = status === "invited";
+                  const isDeactivated = status === "deactivated";
+
                   return (
-                    <tr key={emp.id} className="hover:bg-slate-50/70 transition group">
+                    <tr 
+                      key={emp.id} 
+                      className={`transition group border-l-4 ${
+                        isActive 
+                          ? "border-l-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/20" 
+                          : isInvited 
+                            ? "border-l-amber-500 bg-amber-50/10 hover:bg-amber-50/20" 
+                            : "border-l-rose-500 bg-rose-50/20 hover:bg-rose-50/30"
+                      }`}
+                    >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <Initials name={emp.full_name} />

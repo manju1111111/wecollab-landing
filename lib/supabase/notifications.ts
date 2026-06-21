@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { insertNotification } from "./fallback-db";
 
 function getSupabaseServer() {
   return createClient(
@@ -24,27 +25,11 @@ export async function createNotification(payload: NotificationPayload) {
   try {
     const supabase = getSupabaseServer();
 
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: payload.userId,
-        user_type: payload.userType,
-        type: payload.type,
-        title: payload.title,
-        body: payload.body,
-        link: payload.link || null,
-        read: false,
-      });
+    const { error } = await insertNotification(supabase, payload);
 
     if (error) {
-      if (error.message.includes("does not exist")) {
-        console.warn(
-          `[NOTIFICATION_HELPER] Notifications table does not exist. Skipped inserting notification: "${payload.title}"`
-        );
-        return { success: true, isMocked: true };
-      }
       console.error("[NOTIFICATION_HELPER_ERROR]", error);
-      return { success: false, error: error.message };
+      return { success: false, error: (error as any).message };
     }
 
     // Attempt to broadcast using Supabase Realtime Channel if table exists

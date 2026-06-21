@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createNotification } from "@/lib/supabase/notifications";
 import { sendTaskAssignmentEmail } from "@/lib/notifications/email";
+import { insertTask } from "@/lib/supabase/fallback-db";
 
 function getSupabase() {
   return createClient(
@@ -21,20 +22,16 @@ export async function POST(request: Request) {
 
     const supabase = getSupabase();
 
-    const { data, error } = await supabase
-      .from("employee_tasks")
-      .insert({
-        employee_id: employeeId,
-        title,
-        due_date: dueDate || null,
-        creator_id: creatorId || null,
-      })
-      .select()
-      .single();
+    const { data, error } = await insertTask(supabase, {
+      employee_id: employeeId,
+      title,
+      due_date: dueDate || null,
+      creator_id: creatorId || null,
+    });
 
     if (error) {
       console.error("[PUSH_TASK_ERROR]", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: (error as any).message }, { status: 500 });
     }
 
     // Create a notification for the employee

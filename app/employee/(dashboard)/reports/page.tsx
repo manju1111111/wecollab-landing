@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { PortfolioGrowthChart, CategoryBreakdownChart, PlatformMixChart } from "@/components/employee/portfolio-charts";
 import { PerformanceScore } from "@/components/employee/performance-score";
 
@@ -7,7 +8,7 @@ export default async function EmployeeReportsPage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
   const session = sessionCookie
-    ? JSON.parse(sessionCookie.value)
+    ? (verifySession(sessionCookie.value) || { id: "guest", role: "Employee" })
     : { id: "guest", role: "Employee" };
 
   const supabase = await createClient();
@@ -43,12 +44,9 @@ export default async function EmployeeReportsPage() {
   // Fetch completed tasks count
   let tasksCompleted = 0;
   try {
-    const { count } = await supabase
-      .from("employee_tasks")
-      .select("*", { count: "exact", head: true })
-      .eq("employee_id", session.id)
-      .not("completed_at", "is", null);
-    tasksCompleted = count || 0;
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const rawTasks = await getTasks(supabase, session.id);
+    tasksCompleted = (rawTasks || []).filter((t: any) => t.completed_at).length;
   } catch (e) { console.warn("[REPORTS_TASKS]", e); }
 
   // Fetch week hours

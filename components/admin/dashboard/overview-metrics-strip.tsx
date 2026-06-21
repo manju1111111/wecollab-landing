@@ -3,29 +3,37 @@
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 export function OverviewMetricsStrip({ 
-  totalCreators = 12548,
-  activeCreators = 8421,
-  newCreatorsToday = 156,
-  pendingVerifications = 24
+  totalCreators = 0,
+  activeCreators = 0,
+  newCreatorsToday = 0,
+  pendingVerifications = 0,
+  totalEmployees = 0,
+  activeEmployeesToday = 0,
+  tasksPending = 0,
+  campaignsRunning = 0
 }: {
   totalCreators?: number;
   activeCreators?: number;
   newCreatorsToday?: number;
   pendingVerifications?: number;
+  totalEmployees?: number;
+  activeEmployeesToday?: number;
+  tasksPending?: number;
+  campaignsRunning?: number;
 }) {
   const dummyData = [
     { value: 10 }, { value: 15 }, { value: 25 }, { value: 20 }, { value: 35 }, { value: 30 }, { value: 45 }
   ];
 
   const metrics = [
-    { title: "Total Creators", count: totalCreators.toLocaleString(), daily: "+142", weekly: "+12.5%" },
-    { title: "Active Creators", count: activeCreators.toLocaleString(), daily: "+98", weekly: "+8.3%" },
+    { title: "Total Creators", count: totalCreators.toLocaleString(), daily: "+12", weekly: "+2.5%" },
+    { title: "Active Creators", count: activeCreators.toLocaleString(), daily: "+8", weekly: "+4.3%" },
     { title: "New Creators Today", count: newCreatorsToday.toLocaleString(), daily: `+${newCreatorsToday}`, weekly: "+18.2%" },
-    { title: "Pending Verifications", count: pendingVerifications.toLocaleString(), daily: "+6", weekly: "+18.2%" },
-    { title: "Total Employees", count: "28", daily: "+2", weekly: "+7.7%" },
-    { title: "Active Today", count: "19", daily: "67.9% of team", weekly: "+5" },
-    { title: "Tasks Pending", count: "42", daily: "High Priority: 11", weekly: "Medium: 31", noChart: true },
-    { title: "Campaigns Running", count: "58", daily: "+4", weekly: "+9.4%" },
+    { title: "Pending Verifications", count: pendingVerifications.toLocaleString(), daily: "+2", weekly: "+8.2%" },
+    { title: "Total Employees", count: totalEmployees.toLocaleString(), daily: "+1", weekly: "+5.0%" },
+    { title: "Active Today", count: activeEmployeesToday.toLocaleString(), daily: `${totalEmployees > 0 ? ((activeEmployeesToday / totalEmployees) * 100).toFixed(0) : 0}% of team`, weekly: "Live now" },
+    { title: "Tasks Pending", count: tasksPending.toLocaleString(), daily: "Needs action", weekly: "Assigned tasks", noChart: true },
+    { title: "Campaigns Running", count: campaignsRunning.toLocaleString(), daily: "+1", weekly: "+4.4%" },
   ];
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Scissors, CheckCircle, FileSpreadsheet } from "lucide-react";
+import { Scissors, CheckCircle, FileSpreadsheet, UserPlus } from "lucide-react";
 
 export function RecentActivityFeed({ activities: propActivities }: { activities?: any[] }) {
   const activities = propActivities || [
@@ -58,13 +58,18 @@ export function RecentActivityFeed({ activities: propActivities }: { activities?
             <div className="shrink-0 mt-0.5">
               {act.isImage ? (
                 <div className="h-6 w-6 rounded-full overflow-hidden">
-                  <Image src={act.icon as string} alt="" width={24} height={24} className="object-cover" />
+                  <Image src={act.icon} alt="" width={24} height={24} className="object-cover" />
                 </div>
               ) : (
-                <div className={`h-6 w-6 rounded-full flex items-center justify-center ${act.color}`}>
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center ${act.color || 'bg-slate-100 text-slate-500'}`}>
                   {(() => {
-                    const Icon = act.icon as any;
-                    return <Icon className="h-3 w-3" />;
+                    let IconComponent = Scissors;
+                    if (act.type === 'create' || act.icon === 'create') IconComponent = UserPlus;
+                    else if (act.type === 'verify' || act.icon === 'verify') IconComponent = CheckCircle;
+                    else if (act.type === 'update' || act.icon === 'update') IconComponent = FileSpreadsheet;
+                    else if (act.type === 'delete' || act.icon === 'delete') IconComponent = Scissors;
+                    else if (typeof act.icon !== 'string') IconComponent = act.icon;
+                    return <IconComponent className="h-3 w-3" />;
                   })()}
                 </div>
               )}

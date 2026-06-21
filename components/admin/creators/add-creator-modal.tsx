@@ -52,6 +52,61 @@ export function AddCreatorModal({
   const [lastFetchedUsername, setLastFetchedUsername] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [isAutoOnboarding, setIsAutoOnboarding] = useState(false);
+  const [scrapedCaptions, setScrapedCaptions] = useState<string[]>([]);
+
+  const handleAutoOnboard = async () => {
+    const username = usernameInput.trim();
+    if (!username) {
+      alert("Please enter a username first.");
+      return;
+    }
+    
+    setIsAutoOnboarding(true);
+    setErrorMessage("");
+    setStatusMessage("Running automated categorization pipeline in background...");
+    
+    try {
+      const res = await fetch("/api/admin/categorize-pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        let errMsg = "Automated pipeline failed.";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } else {
+          const text = await res.text();
+          errMsg = text || errMsg;
+        }
+        setErrorMessage(errMsg);
+        setStatusMessage("");
+        return;
+      }
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setStatusMessage("Success! Creator has been auto-onboarded with AI-mapped tags.");
+        alert(`Successfully onboarded @${username}!`);
+        onClose();
+        window.location.reload();
+      } else {
+        setErrorMessage(data.error || "Automated pipeline failed.");
+        setStatusMessage("");
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || "An unexpected error occurred.");
+      setStatusMessage("");
+    } finally {
+      setIsAutoOnboarding(false);
+    }
+  };
+
 
   // Semantic AI Tag Suggester States
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
@@ -127,21 +182,33 @@ export function AddCreatorModal({
 
   if (!isOpen) return null;
 
-  const handleAutoCategorize = async (bioTextContent: string) => {
-    if (!bioTextContent || !bioTextContent.trim()) return;
+  const handleAutoCategorize = async (bioTextContent: string, captionsList?: string[]) => {
+    if (!bioTextContent && (!captionsList || captionsList.length === 0)) return;
     setIsCategorizing(true);
     setErrorMessage("");
-    setStatusMessage("Gemini AI is analyzing biography to auto-detect creator niches...");
+    setStatusMessage("Gemini AI is analyzing biography and recent captions to auto-detect creator niches...");
 
     try {
       const res = await fetch("/api/admin/ai-categorize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: bioTextContent }),
+        body: JSON.stringify({ 
+          description: bioTextContent, 
+          captions: captionsList || scrapedCaptions 
+        }),
       });
       
       if (!res.ok) {
-        throw new Error("AI auto-categorizer endpoint returned an error.");
+        const contentType = res.headers.get("content-type") || "";
+        let errMsg = "AI auto-categorizer endpoint returned an error.";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } else {
+          const text = await res.text();
+          errMsg = text || errMsg;
+        }
+        throw new Error(errMsg);
       }
       
       const data = await res.json();
@@ -187,9 +254,24 @@ export function AddCreatorModal({
         body: JSON.stringify({ username }),
       });
       
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        let errMsg = "Failed to retrieve Instagram details.";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } else {
+          const text = await res.text();
+          errMsg = text || errMsg;
+        }
+        setErrorMessage(errMsg);
+        setStatusMessage("");
+        return;
+      }
+      
       const data = await res.json();
       
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         setErrorMessage(data.error || "Failed to retrieve Instagram details.");
         setStatusMessage("");
         return;
@@ -210,9 +292,12 @@ export function AddCreatorModal({
       setLastFetchedUsername(username);
       setStatusMessage(`Successfully loaded @${username}'s live metrics!`);
       
-      // Auto-categorize using Gemini AI on biography
-      if (data.biography) {
-        await handleAutoCategorize(data.biography);
+      const captions = data.captions || [];
+      setScrapedCaptions(captions);
+
+      // Auto-categorize using Gemini AI on biography and captions
+      if (data.biography || captions.length > 0) {
+        await handleAutoCategorize(data.biography || "", captions);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Network error. Failed to connect to scraper service.");
@@ -233,9 +318,24 @@ export function AddCreatorModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: queryText }),
       });
+      
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        let errMsg = "AI failed to find conceptual category matches.";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } else {
+          const text = await res.text();
+          errMsg = text || errMsg;
+        }
+        setErrorMessage(errMsg);
+        return;
+      }
+      
       const data = await res.json();
       
-      if (res.ok && data.success && Array.isArray(data.suggestions)) {
+      if (data.success && Array.isArray(data.suggestions)) {
         setAiSuggestions(data.suggestions);
         setSearchedTerm(queryText);
       } else {
@@ -450,6 +550,24 @@ export function AddCreatorModal({
                       )}
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    disabled={isAutoOnboarding || !usernameInput.trim()}
+                    onClick={handleAutoOnboard}
+                    className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 bg-indigo-600 hover:bg-indigo-750 disabled:opacity-50 text-white rounded-lg text-[11px] font-extrabold tracking-wide uppercase transition-all shadow-sm shadow-indigo-100"
+                  >
+                    {isAutoOnboarding ? (
+                      <>
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        <span>Processing Pipeline...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 fill-indigo-200" />
+                        <span>Auto-Onboard Pipeline (Skip Form)</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
               <div>

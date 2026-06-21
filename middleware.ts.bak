@@ -1,0 +1,32 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+const ADMIN_HEADER = 'x-admin-key'
+const ADMIN_COOKIE = 'WECO_ADMIN_KEY'
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Protect admin pages and admin API
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    const headerKey = req.headers.get(ADMIN_HEADER) || ''
+    const cookieKey = req.cookies.get(ADMIN_COOKIE) || ''
+    const adminKey = process.env.ADMIN_API_KEY || ''
+
+    if (!adminKey) {
+      // If no admin key configured, deny by default
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+
+    if (headerKey !== adminKey && cookieKey !== adminKey) {
+      const loginUrl = new URL('/admin/login', req.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/admin/:path*', '/api/admin/:path*']
+}

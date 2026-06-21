@@ -3,88 +3,13 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, SlidersHorizontal, Search } from "lucide-react";
 
-export const CATEGORY_GROUPS = [
-  {
-    title: "Video Format",
-    items: ["Face-showing (talking head)", "Faceless creator", "POV-style", "Voice-over only", "Screen recording", "Animation / motion graphics", "Whiteboard / explainer", "Reaction content", "Commentary style", "Vlog (daily life cam)", "Cinematic / film style", "Live streaming", "Short-form (Reels/Shorts/TikTok)", "Text-on-screen only"]
-  },
-  {
-    title: "Hair",
-    items: ["Natural hair", "Relaxed / chemically treated hair", "Hair growth & scalp health", "Hair coloring & dyeing", "Braids & protective styles", "Wigs & extensions", "Men's hair & grooming", "Kids' hair", "Hair tools & heat styling", "Curly hair (3A–4C)", "Hair loss / thinning", "Loc journey", "Big chop / hair transformation", "Straight hair care", "Hair product reviews", "Salon-style tutorials", "Eco / sustainable hair care", "Gray hair & aging hair"]
-  },
-  {
-    title: "Skin & Beauty",
-    items: ["Skincare routine", "Acne & blemish care", "Anti-aging & serums", "Sun care & SPF", "Natural / clean beauty", "Dermatologist-style advice", "Skin of color focus", "Body skincare", "Fragrance & perfume", "Nail art & care", "Makeup tutorials", "GRWM (get ready with me)", "Makeup reviews", "No-makeup / minimal beauty", "Inclusive beauty", "Drugstore beauty", "Luxury beauty", "Skincare ingredient deep dives"]
-  },
-  {
-    title: "Unboxing & Reviews",
-    items: ["Tech unboxing", "Beauty / skincare unboxing", "Subscription box unboxing", "Fashion haul unboxing", "Kids' toy unboxing", "Food & snack unboxing", "Mystery box unboxing", "Luxury item unboxing", "Amazon finds", "Honest product reviews", "First impressions", "Compare & contrast reviews", "Long-term review / wear test", "Worst vs best product ranking"]
-  },
-  {
-    title: "Fashion & Style",
-    items: ["Outfit of the day (OOTD)", "Thrift & secondhand fashion", "Luxury & designer fashion", "Budget / affordable fashion", "Plus-size fashion", "Modest fashion", "Streetwear", "Sustainable fashion", "Men's fashion", "Capsule wardrobe", "Styling tips & tricks", "Trend forecasting"]
-  },
-  {
-    title: "Food & Beverage",
-    items: ["Recipe tutorials", "Restaurant reviews", "Food mukbang", "Baking & pastry", "Healthy eating", "Vegan / plant-based", "Cultural / ethnic cuisine", "Street food exploration", "Meal prep & batch cooking", "Coffee & café culture", "Cocktails & mixology", "Budget meal cooking", "Food science & chemistry", "Kids' friendly cooking", "ASMR cooking / eating", "Grocery hauls"]
-  },
-  {
-    title: "Health & Wellness",
-    items: ["Mental health awareness", "Meditation & mindfulness", "Sleep optimization", "Gut health & digestion", "Hormonal health", "Chronic illness / disability", "Therapy & self-help", "Detox & cleansing", "Supplements & vitamins", "Women's health", "Men's health", "Sobriety & recovery", "Breathwork & stress relief", "Holistic / alternative health"]
-  },
-  {
-    title: "Fitness & Sports",
-    items: ["Home workouts", "Gym training", "Weight loss journey", "Bodybuilding & physique", "Yoga & pilates", "Running & endurance", "CrossFit & HIIT", "Sports-specific training", "Calisthenics", "Dance fitness", "Prenatal / postnatal fitness", "Senior fitness", "Physical therapy & rehab", "Athlete performance"]
-  },
-  {
-    title: "Tech & Gadgets",
-    items: ["Smartphone reviews", "Laptop & PC reviews", "Smart home devices", "Wearables & accessories", "Gaming peripherals", "Camera & photography gear", "Audio gear", "EV & car tech", "AI tools & software", "App reviews", "Budget tech", "Teardowns & repairs", "Setup / desk tour", "Futurism & emerging tech"]
-  },
-  {
-    title: "Gaming & Entertainment",
-    items: ["Game walkthroughs", "Let's play", "Game reviews", "Esports & competitive gaming", "Mobile gaming", "Retro gaming", "Game mods & customization", "Game lore & storytelling", "Speedrunning", "Gaming news & leaks", "Anime reviews & recommendations", "Movie & TV reviews", "Podcast / commentary shows"]
-  },
-  {
-    title: "Lifestyle & Daily Life",
-    items: ["Morning routine", "Night routine", "Productive day in my life", "Slow living & minimalism", "Luxury lifestyle", "College / student life", "Single life", "Couple life", "Solo female living", "Roommate life", "City living", "Rural / countryside living", "Expat life", "Digital nomad lifestyle", "Work from home life"]
-  },
-  {
-    title: "Home & Living",
-    items: ["Home decor & interior design", "DIY & home improvement", "Apartment tours", "Cleaning & organization", "Small space living", "Sustainable home", "Renting tips", "Home buying journey", "Room makeovers", "Feng shui & home energy", "Plant parenthood", "Furniture flipping & thrifting"]
-  },
-  {
-    title: "Parenting & Family",
-    items: ["Newborn & baby care", "Toddler parenting", "Homeschooling", "Single parenting", "Blended family life", "Pregnancy & birth journey", "Postpartum recovery", "Teen parenting", "Special needs parenting", "Family travel"]
-  },
-  {
-    title: "Travel & Outdoors",
-    items: ["Budget travel", "Luxury travel", "Solo travel", "Backpacking", "Van life / nomadic travel", "City guides & travel tips", "Adventure travel", "Beach & island travel", "Cultural immersion travel", "Road trips", "Travel hacks & packing", "Eco & sustainable travel", "Cruise & resort travel"]
-  },
-  {
-    title: "Finance & Business",
-    items: ["Personal finance & budgeting", "Investing", "Crypto & Web3", "Real estate investing", "Side hustles & income ideas", "Entrepreneurship & startups", "Frugal living & saving", "Financial independence (FIRE)", "Career growth & salary", "Small business tips", "Passive income strategies"]
-  },
-  {
-    title: "Education & Learning",
-    items: ["Study tips & productivity", "Language learning", "Science & nature", "History & culture", "Philosophy & ethics", "Mathematics", "Coding & programming", "Psychology & human behavior", "Book summaries & reviews", "Online course reviews", "Self-improvement & habits", "Critical thinking & debate"]
-  },
-  {
-    title: "Arts & Creativity",
-    items: ["Illustration & drawing", "Painting", "Digital art & graphic design", "Photography", "Videography & editing", "Pottery & ceramics", "Knitting, sewing & crafts", "Music production", "Singing & vocal coaching", "Creative writing & poetry", "Street art & murals"]
-  },
-  {
-    title: "Pets & Animals",
-    items: ["Dog care & training", "Cat care", "Exotic pets", "Aquariums & fish keeping", "Pet nutrition & health", "Animal rescue & adoption", "Wildlife & nature content", "Pet product reviews"]
-  },
-  {
-    title: "Spirituality & Mindfulness",
-    items: ["Astrology & birth charts", "Tarot & oracle readings", "Crystal healing & energy", "Law of attraction & manifestation", "Religious / faith-based content", "Meditation & breathwork", "Journaling & shadow work", "Numerology & human design"]
-  },
-  {
-    title: "Social Causes & Advocacy",
-    items: ["Body positivity & self-love", "LGBTQ+ advocacy", "Racial justice & equity", "Environmental activism", "Mental health destigmatization", "Disability & accessibility", "Feminist content", "Political commentary", "Humanitarian & charity work"]
-  }
-];
+import { CREATOR_CATEGORIES } from "@/data/creator-categories";
+
+export const CATEGORY_GROUPS = CREATOR_CATEGORIES.map((g) => ({
+  title: g.groupName,
+  items: g.subCategories,
+}));
+
 
 export function AdvancedFilterPanel({ 
   onFilterChange 

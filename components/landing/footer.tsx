@@ -33,10 +33,11 @@ const columns: FooterColumn[] = [
   {
     title: "Product",
     links: [
-      ["Creator Discovery", "#how-it-works"],
-      ["Advanced Filters", "#product"],
-      ["Match Models", "#product"],
-      ["Reporting", "#product"],
+      ["Creator Discovery", "/discover"],
+      ["Advanced Filters", "/discover"],
+      ["Match Models", "/discover"],
+      ["Reporting", "/discover"],
+      ["Brand Portal", "/brand/login"],
     ],
   },
   {
@@ -46,14 +47,6 @@ const columns: FooterColumn[] = [
       ["Careers", "#"],
       ["Press", "#"],
       ["Contact", "#cta"],
-    ],
-  },
-  {
-    title: "Workspaces",
-    links: [
-      ["Brand Portal", "/brand/login"],
-      ["Employee Portal", "/employee/login"],
-      ["Admin Console", "/admin/login"],
     ],
   },
   {
@@ -80,7 +73,7 @@ export function Footer() {
   return (
     <footer className="relative mt-4 border-t border-slate-800/80 bg-slate-950 text-slate-300">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.2fr_repeat(5,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-10">
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
               <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-md">

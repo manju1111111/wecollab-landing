@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import { DealPipeline } from "@/components/employee/deal-pipeline";
 
 export default async function EmployeePipelinePage() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("employee_session");
   const session = sessionCookie
-    ? JSON.parse(sessionCookie.value)
+    ? (verifySession(sessionCookie.value) || { id: "guest", role: "Employee" })
     : { id: "guest", role: "Employee" };
 
   const supabase = await createClient();

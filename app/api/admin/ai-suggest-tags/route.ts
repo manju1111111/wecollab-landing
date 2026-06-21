@@ -21,16 +21,16 @@ export async function POST(req: Request) {
     // Flatten all possible subcategories from the master taxonomy
     const allValidTags = CREATOR_CATEGORIES.flatMap(group => group.subCategories);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
 You are an intelligent category mapper for an influencer discovery platform.
 The user has searched for a category or topic: "${query}".
-We do not have a direct keyword match for "${query}" in our list of 239 creator sub-categories.
+We do not have a direct keyword match for "${query}" in our list of creator sub-categories.
 
 Your task:
 Analyze "${query}" conceptually and select the top 3-5 most relevant, matching sub-categories from our official MASTER TAXONOMY.
-For example, if they search "cricketer" or "batting", suggest: ["Sports-specific training", "Athlete performance", "Home workouts", "Sports & Fitness"].
+For example, if they search "cricketer" or "batting", suggest: ["Cricket", "Sports-specific training", "Athlete performance", "Running"].
 If they search "skincare", suggest: ["Skincare routine", "Acne & blemish care", "Anti-aging & serums", "Natural / clean beauty", "Body skincare"].
 
 CRITICAL REQUIREMENT:
@@ -42,7 +42,7 @@ MASTER TAXONOMY:
 ${JSON.stringify(allValidTags, null, 2)}
 
 Respond ONLY with a raw JSON array of strings (no markdown, no backticks, no object wrapper).
-Example output: ["Sports-specific training", "Athlete performance", "Sports & Fitness"]
+Example output: ["Cricket", "Sports-specific training", "Athlete performance"]
 `;
 
     const result = await model.generateContent(prompt);

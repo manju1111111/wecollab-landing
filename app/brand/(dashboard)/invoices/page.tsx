@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FileText, CheckCircle2, AlertCircle, DollarSign, Clock, Check, ArrowRight, Sparkles } from "lucide-react";
 import { fetchBrandInvoices, settleInvoice } from "@/app/brand/billing-actions";
 import { createClient } from "@/lib/supabase/client";
+import { getBrandSession } from "@/app/brand/actions";
 
 interface InvoiceRecord {
   id: string;
@@ -23,13 +24,8 @@ export default function BrandInvoicesPage() {
 
   const loadInvoices = async () => {
     try {
-      const sessionCookie = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("brand_session="))
-        ?.split("=")[1];
-
-      if (!sessionCookie) return;
-      const session = JSON.parse(decodeURIComponent(sessionCookie));
+      const session = await getBrandSession();
+      if (!session) return;
 
       const res = await fetchBrandInvoices(session.id);
       if (res.invoices) {

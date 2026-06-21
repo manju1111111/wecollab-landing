@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LayoutDashboard, Target, UserCheck, Settings, LogOut } from "lucide-react";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { verifySession } from "@/lib/supabase/session-crypto";
 
 const CREATOR_NAV_ITEMS = [
   { href: "/creator",          label: "Dashboard",   icon: LayoutDashboard },
@@ -20,7 +21,8 @@ export default async function CreatorLayout({ children }: { children: React.Reac
 
   let session: { id: string; name: string; email: string; role: string } | null = null;
   try {
-    session = JSON.parse(sessionCookie.value);
+    session = verifySession(sessionCookie.value);
+    if (!session) throw new Error("Invalid signature");
   } catch (e) {
     cookieStore.delete("creator_session");
     redirect("/creator/login");

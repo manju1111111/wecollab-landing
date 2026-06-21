@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Sparkles, Check, CheckCircle2 } from "lucide-react";
+import { Sparkles, Check, CheckCircle2, Search } from "lucide-react";
 import { AdminTopFilters, AdminFilterState } from "@/components/admin/creators/admin-top-filters";
 import { CreatorDataGrid } from "@/components/admin/creators/creator-data-grid";
 import { QuickPreviewDrawer } from "@/components/admin/creators/quick-preview-drawer";
@@ -19,6 +19,7 @@ function AdminCreatorsInner() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const PAGE_SIZE = 20;
 
   // Queue Review Tabs: all | pending (Ready for Review) | draft (Pending Verification) | approved (Verified)
@@ -54,6 +55,11 @@ function AdminCreatorsInner() {
 
     // Apply filters and status queues to query
     let query = supabase.from("creators").select("*", { count: "exact" }).order("created_at", { ascending: false });
+
+    if (searchQuery.trim()) {
+      const searchPattern = `%${searchQuery.trim()}%`;
+      query = query.or(`name.ilike.${searchPattern},username.ilike.${searchPattern}`);
+    }
 
     // Platform
     if (filters.platform && filters.platform !== "All Platforms") {
@@ -102,8 +108,11 @@ function AdminCreatorsInner() {
   };
 
   useEffect(() => {
-    fetchCreators(0, false);
-  }, [filters, queueTab]);
+    const timer = setTimeout(() => {
+      fetchCreators(0, false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters, queueTab, searchQuery]);
 
   useEffect(() => {
     const handleOpenModal = () => setIsAddModalOpen(true);
@@ -373,9 +382,29 @@ function AdminCreatorsInner() {
         
         {/* Top Actions */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3 shrink-0">
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Creator Database</h1>
             <p className="text-[13px] text-slate-500 font-medium hidden sm:block">Audit curation queues and manage influencer records.</p>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full md:w-64 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search name or @username..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-[13px] rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {/* Queue Tab Toggles */}

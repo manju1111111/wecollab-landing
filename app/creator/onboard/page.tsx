@@ -38,14 +38,15 @@ const YoutubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const CATEGORIES = [
-  "Fashion & Lifestyle",
+  "Fashion & Style",
   "Tech & Gadgets",
-  "Fitness & Sports",
-  "Food & Cooking",
-  "Travel & Photography",
-  "Business & Finance",
-  "Entertainment & Gaming",
-  "Beauty & Cosmetics",
+  "Fitness",
+  "Sports",
+  "Food & Beverage",
+  "Travel & Outdoors",
+  "Finance & Business",
+  "Gaming & Entertainment",
+  "Skin & Beauty",
   "General / Other"
 ];
 

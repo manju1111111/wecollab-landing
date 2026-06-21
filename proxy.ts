@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { verifySession } from '@/lib/supabase/session-crypto'
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Identify portal paths
-  const isBrandPath = pathname.startsWith('/brand');
+  const isBrandPath = pathname.startsWith('/brand') || pathname === '/discover' || pathname.startsWith('/discover/');
   const isCreatorPath = pathname.startsWith('/creator');
   const isEmployeePath = pathname.startsWith('/employee');
   const isAdminPath = pathname.startsWith('/admin');
+  const isAdminApiPath = pathname.startsWith('/api/admin');
 
   // If not accessing any protected portals, proceed
-  if (!isBrandPath && !isCreatorPath && !isEmployeePath && !isAdminPath) {
+  if (!isBrandPath && !isCreatorPath && !isEmployeePath && !isAdminPath && !isAdminApiPath) {
     return NextResponse.next();
   }
 
@@ -29,7 +31,12 @@ export async function proxy(request: NextRequest) {
     let isValid = false;
     if (brandSession?.value) {
       try {
-        const session = JSON.parse(brandSession.value);
+        let session = verifySession(brandSession.value);
+        if (!session) {
+          try {
+            session = JSON.parse(brandSession.value);
+          } catch (_) {}
+        }
         if (session && session.id && session.role === 'brand') {
           isValid = true;
         }
@@ -57,7 +64,12 @@ export async function proxy(request: NextRequest) {
     let isValid = false;
     if (creatorSession?.value) {
       try {
-        const session = JSON.parse(creatorSession.value);
+        let session = verifySession(creatorSession.value);
+        if (!session) {
+          try {
+            session = JSON.parse(creatorSession.value);
+          } catch (_) {}
+        }
         if (session && session.id && session.role === 'creator') {
           isValid = true;
         }
@@ -85,7 +97,12 @@ export async function proxy(request: NextRequest) {
     let isValid = false;
     if (employeeSession?.value) {
       try {
-        const session = JSON.parse(employeeSession.value);
+        let session = verifySession(employeeSession.value);
+        if (!session) {
+          try {
+            session = JSON.parse(employeeSession.value);
+          } catch (_) {}
+        }
         if (session && session.id && (session.role === 'employee' || session.role === 'admin' || session.role === 'senior_employee' || session.role === 'team_lead')) {
           isValid = true;
         }
@@ -176,6 +193,62 @@ export async function proxy(request: NextRequest) {
     }
 
     return response;
+  }
+
+  // 5. ADMIN API PORTAL PROTECTION
+  if (isAdminApiPath) {
+    const headerKey = request.headers.get('x-admin-key') || '';
+    const cookieKey = request.cookies.get('WECO_ADMIN_KEY')?.value || '';
+    const adminKey = process.env.ADMIN_API_KEY || '';
+
+    // Check 1: Admin API Key (direct token authentication)
+    if (adminKey && (headerKey === adminKey || cookieKey === adminKey)) {
+      return NextResponse.next();
+    }
+
+    // Check 2: Native Supabase Auth (for admin dashboard browser requests)
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            // Read-only in middleware
+          },
+          remove(name: string, options: CookieOptions) {
+            // Read-only in middleware
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      return NextResponse.next();
+    }
+
+    // Check 3: Employee Session (for employee portal browser requests)
+    const employeeSession = request.cookies.get('employee_session');
+    if (employeeSession?.value) {
+      try {
+        let session = verifySession(employeeSession.value);
+        if (!session) {
+          try {
+            session = JSON.parse(employeeSession.value);
+          } catch (_) {}
+        }
+        if (session && session.id && (session.role === 'employee' || session.role === 'admin' || session.role === 'senior_employee' || session.role === 'team_lead')) {
+          return NextResponse.next();
+        }
+      } catch (e) {
+        // Ignore malformed session JSON
+      }
+    }
+
+    // If none of the checks passed, reject
+    return new NextResponse('Unauthorized: Invalid credentials or session expired', { status: 401 });
   }
 
   return NextResponse.next();

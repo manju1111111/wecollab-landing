@@ -30,9 +30,15 @@ export function CreatorAvatar({ src, name, className = "h-10 w-10" }: { src: str
     );
   }
 
+  // Proxy Instagram CDN images to avoid hotlink blocks and CORS errors
+  const isInstagramUrl = src.includes("cdninstagram.com") || src.includes("fbcdn.net") || src.includes("instagram.com");
+  const displaySrc = (src.startsWith("http") && isInstagramUrl)
+    ? `/api/proxy-image?url=${encodeURIComponent(src)}`
+    : src;
+
   return (
     <img
-      src={src}
+      src={displaySrc}
       alt={name}
       onError={() => setError(true)}
       referrerPolicy="no-referrer"

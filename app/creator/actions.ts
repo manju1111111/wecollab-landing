@@ -3,6 +3,7 @@
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { signSession } from "@/lib/supabase/session-crypto";
 
 /**
  * Onboards a new creator using Supabase Auth and inserts their profile.
@@ -93,7 +94,7 @@ export async function onboardCreator(formData: FormData) {
     };
 
     const cookieStore = await cookies();
-    cookieStore.set("creator_session", JSON.stringify(sessionData), {
+    cookieStore.set("creator_session", signSession(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -159,7 +160,7 @@ export async function loginCreator(formData: FormData) {
     };
 
     const cookieStore = await cookies();
-    cookieStore.set("creator_session", JSON.stringify(sessionData), {
+    cookieStore.set("creator_session", signSession(sessionData), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

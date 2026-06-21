@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { updateActivityStatus } from "@/lib/supabase/fallback-db";
 
 function getSupabaseServer() {
   return createClient(
@@ -19,18 +20,11 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseServer();
 
-    const { error } = await supabase
-      .from("employee_activity")
-      .upsert({
-        employee_id: employeeId,
-        status: "offline",
-        last_active: new Date().toISOString(),
-        current_activity: null,
-      }, { onConflict: "employee_id" });
+    const { error } = await updateActivityStatus(supabase, employeeId, "offline", null);
 
     if (error) {
       console.error("[OFFLINE_API_UNLOAD_ERROR]", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: (error as any).message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

@@ -45,6 +45,31 @@ function determineMainCategory(tags: string[]): string {
   return Object.keys(groupCounts).reduce((a, b) => groupCounts[a] > groupCounts[b] ? a : b);
 }
 
+async function logActivity(supabase: any, type: string, description: string) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    let empId = 'b51ef746-a51d-4f88-a753-4a3474f3f877'; // Super Admin fallback
+    if (user?.email) {
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("email", user.email)
+        .single();
+      if (emp) {
+        empId = emp.id;
+      }
+    }
+
+    await supabase.from("employee_activity_log").insert({
+      employee_id: empId,
+      type,
+      description
+    });
+  } catch (e) {
+    console.error("Failed to log activity:", e);
+  }
+}
+
 export async function createCreatorAction(formData: FormData) {
   const supabase = await createAdminClient();
   
@@ -91,6 +116,9 @@ export async function createCreatorAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  // Log activity
+  await logActivity(supabase, "create", `New creator ${data.name} added`);
 
   // 2. Sync to Algolia
   const algoliaClient = getAlgoliaClient();
@@ -159,6 +187,9 @@ export async function updateCreatorAction(id: string, formData: FormData) {
     throw new Error(error.message);
   }
 
+  // Log activity
+  await logActivity(supabase, "update", `Profile updated for @${data.username}`);
+
   // 2. Partial Update in Algolia
   const algoliaClient = getAlgoliaClient();
   await algoliaClient.partialUpdateObject({
@@ -183,6 +214,13 @@ export async function updateCreatorAction(id: string, formData: FormData) {
 export async function deleteCreatorAction(id: string) {
   const supabase = await createAdminClient();
   
+  // Get creator info before deletion to log name
+  const { data: creator } = await supabase
+    .from("creators")
+    .select("name")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("creators")
     .delete()
@@ -191,6 +229,9 @@ export async function deleteCreatorAction(id: string) {
   if (error) {
     throw new Error(error.message);
   }
+
+  // Log activity
+  await logActivity(supabase, "delete", `Deleted entry: ${creator?.name || "Unknown Creator"}`);
 
   const algoliaClient = getAlgoliaClient();
   await algoliaClient.deleteObject({

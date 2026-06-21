@@ -13,6 +13,7 @@ import {
   Users,
   Video,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { GlassCard } from "./glass-card";
 import { SectionShell } from "./section-shell";
 
@@ -87,6 +88,8 @@ const tags = [
 ];
 
 export function AdvancedFilters() {
+  const router = useRouter();
+
   return (
     <SectionShell id="product" className="bg-white pb-16 pt-10 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
       <div className="mx-auto max-w-[1200px] space-y-12 px-5 sm:px-8 lg:space-y-14">
@@ -140,7 +143,18 @@ export function AdvancedFilters() {
             viewport={{ once: true, margin: "-50px" }}
             transition={{ duration: 0.5 }}
           >
-            <GlassCard className="border-white/80 p-6 sm:p-8" hover={false}>
+            <GlassCard 
+              className="border-white/80 p-6 sm:p-8 relative overflow-hidden group cursor-pointer transition hover:border-violet-350 active:scale-[0.99]" 
+              hover={false}
+              onClick={() => router.push("/brand/login")}
+            >
+              {/* Unlock Overlay on Hover */}
+              <div className="absolute inset-0 bg-violet-950/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[0.5px] pointer-events-none z-10">
+                <span className="bg-slate-900/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                  <Lock className="w-3.5 h-3.5 text-violet-300 animate-pulse" />
+                  Sign In to Unlock Filters
+                </span>
+              </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-3">
                 <div className="relative min-h-[48px] flex-1">
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />

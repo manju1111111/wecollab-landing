@@ -54,19 +54,32 @@ const entFeatures = [
   "SLA & premium support",
 ];
 
+const CheckIcon = () => (
+  <span className="inline-flex items-center justify-center">
+    <Check className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+    <span className="sr-only">Yes</span>
+  </span>
+);
+
 const comparisonRows: {
   label: string;
   starter: ReactNode;
   pro: ReactNode;
   ent: ReactNode;
 }[] = [
-  { label: "AI Creator Matching", starter: "—", pro: <Check className="mx-auto h-4 w-4 text-violet-600" />, ent: <Check className="mx-auto h-4 w-4 text-violet-600" /> },
-  { label: "Advanced Filters", starter: "—", pro: <Check className="mx-auto h-4 w-4 text-violet-600" />, ent: <Check className="mx-auto h-4 w-4 text-violet-600" /> },
-  { label: "Audience Insights", starter: "—", pro: <Check className="mx-auto h-4 w-4 text-violet-600" />, ent: <Check className="mx-auto h-4 w-4 text-violet-600" /> },
-  { label: "Campaign Management", starter: "—", pro: <Check className="mx-auto h-4 w-4 text-violet-600" />, ent: <Check className="mx-auto h-4 w-4 text-violet-600" /> },
-  { label: "API Access", starter: "—", pro: "—", ent: <Check className="mx-auto h-4 w-4 text-violet-600" /> },
-  { label: "Team Members", starter: "1", pro: "5", ent: "Unlimited" },
+  { label: "Creator Discovery", starter: "Limited Searches", pro: "Unlimited", ent: "Unlimited" },
+  { label: "Advanced Filters", starter: "—", pro: <CheckIcon />, ent: <CheckIcon /> },
+  { label: "AI Creator Matching", starter: "—", pro: <CheckIcon />, ent: <CheckIcon /> },
+  { label: "Audience Insights", starter: "—", pro: <CheckIcon />, ent: <CheckIcon /> },
+  { label: "Engagement Analytics", starter: "—", pro: <CheckIcon />, ent: <CheckIcon /> },
+  { label: "Creator Bookmarks", starter: <CheckIcon />, pro: <CheckIcon />, ent: <CheckIcon /> },
+  { label: "Campaign Management", starter: "—", pro: <CheckIcon />, ent: <CheckIcon /> },
   { label: "Export Creators", starter: "50", pro: "Unlimited", ent: "Unlimited" },
+  { label: "White-label Reports", starter: "—", pro: "—", ent: <CheckIcon /> },
+  { label: "Custom Integrations", starter: "—", pro: "—", ent: <CheckIcon /> },
+  { label: "API Access", starter: "—", pro: "—", ent: <CheckIcon /> },
+  { label: "Team Members", starter: "1", pro: "5", ent: "Unlimited" },
+  { label: "Support & Onboarding", starter: "Email Support", pro: "Priority Email", ent: "SLA & Dedicated Manager" },
 ];
 
 const bottomTrust = [
@@ -304,7 +317,7 @@ export function Pricing() {
                   <tr key={row.label} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0">
                     <td className="px-5 py-3 font-medium text-slate-800 dark:text-slate-300 sm:px-8">{row.label}</td>
                     <td className="px-3 py-3 text-center text-slate-600 dark:text-slate-400">{row.starter}</td>
-                    <td className="px-3 py-3 text-center">{row.pro}</td>
+                    <td className="px-3 py-3 text-center text-slate-800 dark:text-slate-200 font-medium">{row.pro}</td>
                     <td className="px-3 py-3 text-center text-slate-600 dark:text-slate-400 sm:pr-8">{row.ent}</td>
                   </tr>
                 ))}

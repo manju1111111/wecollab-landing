@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform, type Variants } from "framer-motion";
 import { NumberTicker } from "./number-ticker";
+
+const MotionLink = motion(Link);
 import {
   LayoutGrid,
   ShieldCheck,
@@ -82,7 +84,7 @@ export function Hero() {
       <div className="relative z-10 flex w-full flex-1 flex-col justify-center px-5 pb-12 pt-[calc(4.25rem+clamp(2rem,8vmin,4.5rem))] sm:px-8 sm:pb-16 sm:pt-[calc(4.25rem+clamp(2.5rem,10vmin,5.5rem))] lg:px-10 lg:pb-20 lg:pt-[calc(4.25rem+clamp(3rem,9vmin,6rem))]">
         <div className="mx-auto w-full max-w-[1200px]">
           <div className="grid grid-cols-1 items-start gap-10 sm:gap-12 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-10 lg:gap-y-0 xl:gap-x-14">
-            {/* Left column — copy + CTAs (row 1) */}
+            {/* Left column â€” copy + CTAs (row 1) */}
             <div className="flex max-w-2xl flex-col items-start text-left lg:col-span-1 lg:col-start-1 lg:row-start-1 lg:max-w-none">
               <motion.h1
                 initial="hidden"
@@ -120,27 +122,26 @@ export function Hero() {
                 transition={{ delay: 0.6, duration: 0.5 }}
                 className="mt-5 flex w-full flex-wrap items-center gap-4 sm:mt-6 sm:gap-5"
               >
-                <Link href="/brand/login" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="group inline-flex min-h-[3.25rem] shrink-0 items-center justify-center gap-2 rounded-full bg-slate-900 px-8 text-[0.9375rem] font-semibold tracking-tight text-white shadow-md shadow-slate-900/15 ring-1 ring-white/10 transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
+                <MotionLink
+                  href="/brand/login"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="group inline-flex min-h-[3.25rem] shrink-0 items-center justify-center gap-2 rounded-full bg-slate-900 px-8 text-[0.9375rem] font-semibold tracking-tight text-white shadow-md shadow-slate-900/15 ring-1 ring-white/10 transition duration-200 ease-out hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/55 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                >
                   Join for Free
                   <span
                     aria-hidden
                     className="text-base transition-transform duration-200 ease-out group-hover:translate-x-0.5"
                   >
-                    →
+                    â†’
                   </span>
-                  </motion.a>
-                </Link>
-                <Link href="/discover" passHref legacyBehavior>
-                  <motion.a
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="group inline-flex min-h-[3.25rem] shrink-0 items-center gap-2.5 rounded-full border border-slate-200/90 bg-white/85 pl-2 pr-8 text-[0.9375rem] font-semibold tracking-tight text-slate-900 shadow-sm shadow-slate-900/[0.04] ring-1 ring-inset ring-slate-900/[0.04] backdrop-blur-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-md hover:shadow-slate-900/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
+                </MotionLink>
+                <MotionLink
+                  href="/brand/login"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="group inline-flex min-h-[3.25rem] shrink-0 items-center gap-2.5 rounded-full border border-slate-200/90 bg-white/85 pl-2 pr-8 text-[0.9375rem] font-semibold tracking-tight text-slate-900 shadow-sm shadow-slate-900/[0.04] ring-1 ring-inset ring-slate-900/[0.04] backdrop-blur-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-md hover:shadow-slate-900/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                >
                   <span className="flex shrink-0 -space-x-2 pr-0.5" aria-hidden>
                     {discoverCreatorAvatars.map((src) => (
                       <span
@@ -158,8 +159,7 @@ export function Hero() {
                     ))}
                   </span>
                   Discover Creators
-                  </motion.a>
-                </Link>
+                </MotionLink>
               </motion.div>
             </div>
 
@@ -205,7 +205,7 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Right column — glow + hero art (spans both rows beside copy + stats) */}
+            {/* Right column â€” glow + hero art (spans both rows beside copy + stats) */}
             <div className="relative mx-auto min-w-0 w-full max-w-lg lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mx-0 lg:-mr-20 lg:max-w-none lg:w-[calc(100%+5rem)] xl:-mr-40 xl:w-[calc(100%+9rem)] 2xl:-mr-48 2xl:w-[calc(100%+11rem)]">
               <motion.div
                 style={{ y: y1 }}
@@ -220,40 +220,6 @@ export function Hero() {
 
               <div className="relative z-10 flex h-full min-h-[min(60vw,320px)] w-full justify-center pt-2 sm:min-h-[min(56vw,380px)] sm:pt-0 lg:min-h-0 lg:justify-end lg:pt-0">
                 <div className="relative mx-auto w-full max-w-[min(100%,80rem)] sm:max-w-[min(100%,88rem)] lg:mx-0 lg:ml-auto lg:max-w-[min(100%,min(100rem,calc(96vw-0.5rem)))] xl:max-w-[min(100%,132rem)] lg:right-16 xl:right-24 2xl:right-28">
-                  {/* Floating Decorative Cards */}
-                  {/* Chart Icon Card */}
-                  <motion.div
-                    style={{ y: y1 }}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
-                    className="absolute left-[3%] top-[20%] z-10 hidden sm:flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/50 bg-white/95 text-violet-600 shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur-sm"
-                  >
-                    <BarChart3 className="h-5 w-5" strokeWidth={2} />
-                  </motion.div>
-
-                  {/* User Profile Card */}
-                  <motion.div
-                    style={{ y: y2 }}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5, duration: 0.5 }}
-                    className="absolute right-[-2%] top-[38%] z-10 hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-violet-600 text-white shadow-[0_8px_30px_rgba(109,40,217,0.25)]"
-                  >
-                    <User className="h-5 w-5" strokeWidth={2} />
-                  </motion.div>
-
-                  {/* Heart Icon Card */}
-                  <motion.div
-                    style={{ y: y3 }}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.6, duration: 0.5 }}
-                    className="absolute right-[4%] bottom-[20%] z-10 hidden sm:flex h-11 w-11 items-center justify-center rounded-full bg-white text-rose-500 shadow-[0_8px_30px_rgba(0,0,0,0.06)]"
-                  >
-                    <Heart className="h-5 w-5 fill-rose-500" strokeWidth={2} />
-                  </motion.div>
-
                   {/* Bottom fade + soft corner blur into next section */}
                   <div
                     aria-hidden

@@ -2,13 +2,23 @@ import { createClient } from "@supabase/supabase-js";
 import { algoliasearch } from "algoliasearch";
 import { faker } from "@faker-js/faker";
 
-// Hardcoded for the script (DO NOT COMMIT)
-const SUPABASE_URL = "https://xkssgycaqwjqajipoooy.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhrc3NneWNhcXdqcWFqaXBvb295Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTM3NDY1NSwiZXhwIjoyMDk0OTUwNjU1fQ.LoQxqe49EHetMOc5Mgf-PEHUfzFXCQn7ppf_hbQrZxo"; // Service Role Key
+// Read secrets from environment variables. Do NOT hardcode keys.
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const ALGOLIA_APP_ID = "18VKHZD8P3";
-const ALGOLIA_API_KEY = "3b2531592e9757d3339fa3e414727e5e"; // Admin Key
-const ALGOLIA_INDEX = "creators";
+const ALGOLIA_APP_ID = process.env.ALGOLIA_APP_ID;
+const ALGOLIA_API_KEY = process.env.ALGOLIA_ADMIN_KEY || process.env.ALGOLIA_API_KEY;
+const ALGOLIA_INDEX = process.env.ALGOLIA_INDEX || "creators";
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment.');
+  process.exit(1);
+}
+
+if (!ALGOLIA_APP_ID || !ALGOLIA_API_KEY) {
+  console.error('Missing Algolia credentials. Set ALGOLIA_APP_ID and ALGOLIA_ADMIN_KEY in your environment.');
+  process.exit(1);
+}
 
 const CATEGORY_POOLS = [
   "Lifestyle", "Fashion", "Beauty", "Tech", "Gaming", 
@@ -23,8 +33,8 @@ const CATEGORY_POOLS = [
 async function seed() {
   console.log("Starting seed of 500 creators...");
   
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-  const algoliaClient = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_API_KEY);
+  const supabase = createClient(SUPABASE_URL!, SUPABASE_KEY!);
+  const algoliaClient = algoliasearch(ALGOLIA_APP_ID!, ALGOLIA_API_KEY!);
 
   const creators = [];
 
@@ -114,10 +124,10 @@ async function seed() {
        await fetch(`https://${ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/${ALGOLIA_INDEX}/batch`, {
          method: 'POST',
          headers: {
-           'X-Algolia-API-Key': ALGOLIA_API_KEY,
-           'X-Algolia-Application-Id': ALGOLIA_APP_ID,
+           'X-Algolia-API-Key': ALGOLIA_API_KEY!,
+           'X-Algolia-Application-Id': ALGOLIA_APP_ID!,
            'Content-Type': 'application/json'
-         },
+         } as any,
          body: JSON.stringify({
            requests: chunk.map(r => ({ action: 'addObject', body: r }))
          })

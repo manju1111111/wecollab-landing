@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Sparkles, Users, Award, AlertCircle, HeartHandshake, Eye, MapPin } from "lucide-react";
+import { verifySession } from "@/lib/supabase/session-crypto";
 import React from "react";
 
 export default async function CreatorDashboardPage() {
@@ -12,7 +13,7 @@ export default async function CreatorDashboardPage() {
     redirect("/creator/login");
   }
 
-  const session = JSON.parse(sessionCookie.value);
+  const session = verifySession(sessionCookie.value);
 
   const supabase = await createAdminClient();
 

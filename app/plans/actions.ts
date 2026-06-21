@@ -353,8 +353,17 @@ export async function updateCreatorNegotiatedCost(listId: string, creatorId: str
     
   if (!list) return { error: "List not found" };
   
-  const currentLedger = list.cost_per_creator || {};
-  const updatedLedger = { ...currentLedger, [creatorId]: cost };
+  const currentLedger = (list.cost_per_creator as Record<string, any>) || {};
+  const currentCreatorData = currentLedger[creatorId];
+  
+  let updatedCreatorData;
+  if (typeof currentCreatorData === "object" && currentCreatorData !== null) {
+    updatedCreatorData = { ...currentCreatorData, cost };
+  } else {
+    updatedCreatorData = { cost, outreach_status: "not_contacted" };
+  }
+  
+  const updatedLedger = { ...currentLedger, [creatorId]: updatedCreatorData };
   
   const { error } = await supabase
     .from("lists")
@@ -370,11 +379,56 @@ export async function updateCreatorNegotiatedCost(listId: string, creatorId: str
   return { success: true };
 }
 
-export async function updatePlanDetails(planId: string, name: string, brand: string, budget: number) {
+export async function updateCreatorOutreachStatus(listId: string, creatorId: string, status: string) {
   const supabase = await createAdminClient();
+  
+  const { data: list } = await supabase
+    .from("lists")
+    .select("cost_per_creator, plan_id")
+    .eq("id", listId)
+    .single();
+    
+  if (!list) return { error: "List not found" };
+  
+  const currentLedger = (list.cost_per_creator as Record<string, any>) || {};
+  const currentCreatorData = currentLedger[creatorId];
+  
+  let updatedCreatorData;
+  if (typeof currentCreatorData === "object" && currentCreatorData !== null) {
+    updatedCreatorData = { ...currentCreatorData, outreach_status: status };
+  } else {
+    updatedCreatorData = { cost: Number(currentCreatorData) || 0, outreach_status: status };
+  }
+  
+  const updatedLedger = { ...currentLedger, [creatorId]: updatedCreatorData };
+  
+  const { error } = await supabase
+    .from("lists")
+    .update({ cost_per_creator: updatedLedger })
+    .eq("id", listId);
+    
+  if (error) {
+    console.error("[UPDATE_OUTREACH_STATUS_ERROR]", error);
+    return { error: error.message };
+  }
+  
+  revalidatePath(`/plans/${list.plan_id}`);
+  return { success: true };
+}
+
+export async function updatePlanDetails(planId: string, name: string, budget: number) {
+  const supabase = await createAdminClient();
+
+  // Prevent changing plan ownership via this action. Only allow updating name and budget.
+  const { error: fetchErr, data: existing } = await supabase.from("plans").select("brand").eq("id", planId).single();
+  if (fetchErr) {
+    console.error('[UPDATE_PLAN_FETCH_ERROR]', fetchErr);
+    return { error: fetchErr.message };
+  }
+
   const { error } = await supabase
     .from("plans")
-    .update({ name, brand, budget })
+    .update({ name, budget })
     .eq("id", planId);
 
   if (error) {

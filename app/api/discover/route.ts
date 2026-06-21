@@ -33,12 +33,22 @@ export async function POST(request: Request) {
     // 1. Search Algolia
     const results = await searchEngine.search(filters);
 
-    // 2. Sanitize all images in Algolia hits first
+    // 2. Sanitize all images and strip sensitive fields from Algolia hits
     //    (some legacy records may have slipped through with http:// or bad values)
-    results.hits = results.hits.map((hit: any) => ({
-      ...hit,
-      profile_image: sanitizeImageForResponse(hit.profile_image),
-    }));
+    results.hits = results.hits.map((hit: any) => {
+      const sanitized = {
+        ...hit,
+        profile_image: sanitizeImageForResponse(hit.profile_image),
+      };
+
+      // Remove any sensitive contact fields from public payloads
+      delete sanitized.email;
+      delete sanitized.contact_email;
+      delete sanitized.contact;
+      delete sanitized.phone;
+
+      return sanitized;
+    });
 
     // 3. Enrich hits that have no image from Supabase (handles old creators
     //    whose images were stripped during the base64→CDN migration).

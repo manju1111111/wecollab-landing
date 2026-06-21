@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LayoutDashboard, Award, Settings, LogOut, HeartHandshake, FileText } from "lucide-react";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { verifySession } from "@/lib/supabase/session-crypto";
 
 const BRAND_NAV_ITEMS = [
   { href: "/brand",           label: "Overview Dashboard", icon: LayoutDashboard },
@@ -19,8 +20,30 @@ export default async function BrandLayout({ children }: { children: React.ReactN
     redirect("/brand/login");
   }
 
-  const session = JSON.parse(sessionCookie.value);
-  const initials = (session.name || "Brand")
+  const session = verifySession(sessionCookie.value);
+  
+  if (!session || session.role !== "brand") {
+    redirect("/brand/login");
+  }
+  
+  // Live query database to make sure brand name changes reflect instantly
+  let brandName = session.name || "Brand";
+  try {
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const supabase = await createAdminClient();
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("name")
+      .eq("id", session.id)
+      .single();
+    if (brand?.name) {
+      brandName = brand.name;
+    }
+  } catch (e) {
+    console.error("Failed to query live brand profile:", e);
+  }
+
+  const initials = brandName
     .split(" ")
     .filter(Boolean)
     .map((n: string) => n[0])
@@ -68,7 +91,7 @@ export default async function BrandLayout({ children }: { children: React.ReactN
               {initials}
             </div>
             <div className="overflow-hidden">
-              <p className="text-[12px] font-bold text-white truncate">{session.name}</p>
+              <p className="text-[12px] font-bold text-white truncate">{brandName}</p>
               <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Verified Client</p>
             </div>
           </div>
@@ -105,6 +128,18 @@ export default async function BrandLayout({ children }: { children: React.ReactN
             <button className="text-slate-400 hover:text-white transition">
               <Settings className="h-4.5 w-4.5" />
             </button>
+
+            <form action={async () => {
+              "use server";
+              const { cookies } = await import("next/headers");
+              (await cookies()).delete("brand_session");
+              redirect("/brand/login");
+            }}>
+              <button type="submit" className="text-slate-400 hover:text-rose-400 transition flex items-center justify-center cursor-pointer" title="Sign Out">
+                <LogOut className="h-4.5 w-4.5" />
+              </button>
+            </form>
+
             <div className="h-8 w-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-[11px]">
               {initials}
             </div>

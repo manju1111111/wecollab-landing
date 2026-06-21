@@ -11,6 +11,7 @@ import {
   CheckSquare,
   CheckCircle,
   BarChart, 
+  Mail,
   Calendar,
   Activity,
   Settings, 
@@ -30,6 +31,7 @@ const sidebarLinks = [
   { name: "Tasks", href: "/admin/tasks", icon: CheckSquare },
   { name: "Approvals", href: "/admin/approvals", icon: CheckCircle },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart },
+  { name: "Newsletter", href: "/admin/newsletter", icon: Mail },
   { name: "Calendar", href: "/admin/calendar", icon: Calendar },
   { name: "Activity", href: "/admin/activity", icon: Activity },
   { name: "Settings", href: "/admin/settings", icon: Settings },
@@ -45,12 +47,14 @@ export default function AdminLayout({
 
   // Don't show custom layout on login page
   if (pathname === "/admin/login") {
-    return <>{children}</>;
+    return <AdminProfileProvider>{children}</AdminProfileProvider>;
   }
 
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    localStorage.removeItem("wecollab_admin_profile");
+    document.cookie = "wecollab_admin_profile=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/admin/login");
     router.refresh();
   };

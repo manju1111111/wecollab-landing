@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { signSession, verifySession } from "@/lib/supabase/session-crypto";
 
 export async function inviteEmployee(formData: FormData) {
   const supabase = await createAdminClient();
@@ -122,7 +123,7 @@ export async function createAccount(token: string, formData: FormData) {
   };
 
   const cookieStore = await cookies();
-  cookieStore.set("employee_session", JSON.stringify(sessionData), {
+  cookieStore.set("employee_session", signSession(sessionData), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -178,7 +179,7 @@ export async function loginEmployee(formData: FormData) {
   };
 
   const cookieStore = await cookies();
-  cookieStore.set("employee_session", JSON.stringify(sessionData), {
+  cookieStore.set("employee_session", signSession(sessionData), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -203,7 +204,7 @@ export async function logoutEmployee() {
   
   if (sessionCookie) {
     try {
-      const session = JSON.parse(sessionCookie.value);
+      const session = verifySession(sessionCookie.value);
       if (session && session.id) {
         const { setOffline } = await import("./activity-actions");
         await setOffline(session.id);
@@ -254,4 +255,74 @@ export async function resendEmployeeInvite(employeeId: string) {
 
   const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/employee/create-account?token=${newToken}`;
   return { success: true, link: inviteLink };
+}
+
+export async function updateEmployeeProfile(formData: FormData) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("employee_session");
+  if (!sessionCookie) {
+    return { error: "Not authenticated" };
+  }
+
+  let session = verifySession(sessionCookie.value);
+  if (!session) {
+    return { error: "Invalid session" };
+  }
+
+  const employeeId = session.id;
+  const fullName = formData.get("fullName") as string;
+  const email = formData.get("email") as string;
+  const phone = formData.get("phone") as string;
+  const department = formData.get("department") as string;
+  const designation = formData.get("designation") as string;
+
+  if (!fullName || !email) {
+    return { error: "Full Name and Email are required." };
+  }
+
+  const supabase = await createAdminClient();
+  const { error } = await supabase
+    .from("employees")
+    .update({
+      full_name: fullName,
+      email: email.toLowerCase(),
+      phone,
+      department,
+      designation
+    })
+    .eq("id", employeeId);
+
+  if (error) {
+    console.error("Update Employee Profile Error:", error);
+    if (error.code === '23505') {
+      return { error: "An employee with this email already exists." };
+    }
+    return { error: `Failed to update profile: ${error.message}` };
+  }
+
+  // Update session cookie with new details
+  const updatedSession = {
+    ...session,
+    full_name: fullName,
+  };
+  cookieStore.set("employee_session", signSession(updatedSession), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60
+  });
+
+  revalidatePath("/employee", "layout");
+  return { success: true };
+}
+
+/**
+ * Gets the verified employee session.
+ */
+export async function getEmployeeSession() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("employee_session");
+  if (!sessionCookie) return null;
+  return verifySession(sessionCookie.value);
 }

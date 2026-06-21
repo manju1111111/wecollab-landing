@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FileText, Plus, CheckCircle2, DollarSign, Target, Sparkles, FolderPen } from "lucide-react";
 import { createContract } from "@/app/brand/billing-actions";
 import { createClient } from "@/lib/supabase/client";
+import { getEmployeeSession } from "@/app/employee/actions";
 
 interface CreatorOption {
   id: string;
@@ -144,13 +145,8 @@ export default function EmployeeContractsPage() {
     try {
       const supabase = createClient();
 
-      const sessionCookie = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("employee_session="))
-        ?.split("=")[1];
-
-      if (!sessionCookie) return;
-      const session = JSON.parse(decodeURIComponent(sessionCookie));
+      const session = await getEmployeeSession();
+      if (!session) return;
       setEmployeeId(session.id);
 
       // 1. Fetch campaigns

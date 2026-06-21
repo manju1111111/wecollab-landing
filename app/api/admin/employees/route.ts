@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getTasks } from "@/lib/supabase/fallback-db";
 
 function getSupabaseServer() {
   return createClient(
@@ -35,22 +36,20 @@ export async function GET() {
       }
     });
 
-    // Get completed task counts per employee
+    // Get completed task counts per employee via fallback-db (handles PGRST205)
     let taskCountMap: Record<string, number> = {};
     try {
-      const { data: taskCounts } = await supabase
-        .from("employee_tasks")
-        .select("employee_id")
-        .not("completed_at", "is", null);
-
-      (taskCounts || []).forEach((t: any) => {
-        taskCountMap[t.employee_id] = (taskCountMap[t.employee_id] || 0) + 1;
-      });
+      const allTasks = await getTasks(supabase);
+      allTasks
+        .filter((t: any) => t.completed_at)
+        .forEach((t: any) => {
+          taskCountMap[t.employee_id] = (taskCountMap[t.employee_id] || 0) + 1;
+        });
     } catch (e) {
-      // Table may not exist yet
+      // Table may not exist yet, skip task counts
     }
 
-    const enriched = (employees || []).map(emp => ({
+    const enriched = (employees || []).map((emp: any) => ({
       ...emp,
       assigned_count: countMap[emp.id] || 0,
       tasks_completed: taskCountMap[emp.id] || 0,
