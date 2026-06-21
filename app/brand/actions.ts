@@ -8,6 +8,27 @@ import { sendPasswordResetEmail } from "@/lib/notifications/email";
 import { signSession, verifySession } from "@/lib/supabase/session-crypto";
 
 /**
+ * Returns the base URL for generating links in emails.
+ * Priority:
+ * 1. NEXT_PUBLIC_APP_URL env var (set this in production!)
+ * 2. x-forwarded-host / host header from the incoming request
+ * 3. Fallback to localhost:3000
+ */
+async function getBaseUrl(): Promise<string> {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+  try {
+    const headerStore = await headers();
+    const host = headerStore.get('x-forwarded-host') || headerStore.get('host') || 'localhost:3000';
+    const proto = headerStore.get('x-forwarded-proto') || 'http';
+    return `${proto}://${host}`;
+  } catch {
+    return 'http://localhost:3000';
+  }
+}
+
+/**
  * Registers a new Brand client in the database.
  */
 export async function registerBrand(formData: FormData) {
@@ -207,7 +228,7 @@ export async function logoutBrand() {
 /**
  * Request password reset link.
  */
-export async function requestPasswordReset(email: string, origin: string) {
+export async function requestPasswordReset(email: string, origin?: string) {
   try {
     if (!email) {
       return { error: "Email is required." };
@@ -247,7 +268,8 @@ export async function requestPasswordReset(email: string, origin: string) {
       return { error: "Failed to generate reset token." };
     }
 
-    const resetUrl = `${origin}/brand/reset-password?token=${token}`;
+    const baseUrl = await getBaseUrl();
+    const resetUrl = `${baseUrl}/brand/reset-password?token=${token}`;
     const emailRes = await sendPasswordResetEmail({
       to: brand.email,
       token,

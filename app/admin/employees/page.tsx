@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { UserPlus, Users, UserCog, Search, MoreHorizontal, ChevronRight, CheckCircle2, XCircle, Clock, Shield, Send } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { UserPlus, Users, UserCog, Search, MoreHorizontal, CheckCircle2, XCircle, Clock, KeyRound, Eye, EyeOff, X } from "lucide-react";
 import { AddEmployeeModal } from "@/components/admin/dashboard/add-employee-modal";
-import { toggleEmployeeStatus } from "@/app/employee/actions";
+import { toggleEmployeeStatus, adminResetEmployeePassword } from "@/app/employee/actions";
 
 interface Employee {
   id: string;
@@ -43,12 +43,138 @@ function Initials({ name }: { name: string }) {
   );
 }
 
+// ── Reset Password Modal ────────────────────────────────────────────
+function ResetPasswordModal({
+  employee,
+  onClose,
+}: {
+  employee: Employee;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleReset = async () => {
+    setError(null);
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+
+    setIsLoading(true);
+    const res = await adminResetEmployeePassword(employee.id, password);
+    setIsLoading(false);
+
+    if (res.error) { setError(res.error); return; }
+    setSuccess(true);
+    setTimeout(onClose, 1800);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <KeyRound className="h-4 w-4 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-[14px] font-bold text-slate-900">Reset Password</p>
+              <p className="text-[12px] text-slate-400">{employee.full_name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 flex flex-col gap-4">
+          {success ? (
+            <div className="py-6 flex flex-col items-center text-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+              </div>
+              <p className="font-bold text-slate-900">Password Updated</p>
+              <p className="text-[13px] text-slate-500">The new password has been set for {employee.full_name.split(" ")[0]}.</p>
+            </div>
+          ) : (
+            <>
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-[13px] font-medium rounded-xl">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-bold text-slate-700">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPwd ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className="w-full h-11 px-4 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-bold text-slate-700">Confirm Password</label>
+                <input
+                  type={showPwd ? "text" : "password"}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-all"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={onClose}
+                  className="flex-1 h-11 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReset}
+                  disabled={isLoading || !password || !confirm}
+                  className="flex-1 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[13px] font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  ) : (
+                    <><KeyRound className="h-3.5 w-3.5" /> Set Password</>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────────
 export default function AdminEmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Employee | null>(null);
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -64,6 +190,13 @@ export default function AdminEmployeesPage() {
   };
 
   useEffect(() => { fetchEmployees(); }, []);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handler = () => setActionMenu(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
 
   const filtered = employees.filter(e =>
     e.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -160,6 +293,7 @@ export default function AdminEmployeesPage() {
                   <th className="text-center px-4 py-3 font-semibold text-slate-400 text-[11px] uppercase tracking-wider">Creators</th>
                   <th className="text-center px-4 py-3 font-semibold text-slate-400 text-[11px] uppercase tracking-wider">Tasks Done</th>
                   <th className="text-left px-4 py-3 font-semibold text-slate-400 text-[11px] uppercase tracking-wider">Status</th>
+                  <th className="text-center px-4 py-3 font-semibold text-slate-400 text-[11px] uppercase tracking-wider">Password</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -170,16 +304,15 @@ export default function AdminEmployeesPage() {
                   const status = emp.status || "active";
                   const isActive = status === "active";
                   const isInvited = status === "invited";
-                  const isDeactivated = status === "deactivated";
 
                   return (
-                    <tr 
-                      key={emp.id} 
+                    <tr
+                      key={emp.id}
                       className={`transition group border-l-4 ${
-                        isActive 
-                          ? "border-l-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/20" 
-                          : isInvited 
-                            ? "border-l-amber-500 bg-amber-50/10 hover:bg-amber-50/20" 
+                        isActive
+                          ? "border-l-emerald-500 bg-emerald-50/10 hover:bg-emerald-50/20"
+                          : isInvited
+                            ? "border-l-amber-500 bg-amber-50/10 hover:bg-amber-50/20"
                             : "border-l-rose-500 bg-rose-50/20 hover:bg-rose-50/30"
                       }`}
                     >
@@ -210,8 +343,22 @@ export default function AdminEmployeesPage() {
                           {badge.label}
                         </span>
                       </td>
+
+                      {/* Password Column */}
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={() => { setResetTarget(emp); setActionMenu(null); }}
+                          title="Reset password for this employee"
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-[11px] font-bold border border-indigo-100 transition-colors"
+                        >
+                          <KeyRound className="h-3 w-3" />
+                          Reset
+                        </button>
+                      </td>
+
+                      {/* Actions Menu */}
                       <td className="px-4 py-4">
-                        <div className="relative">
+                        <div className="relative" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => setActionMenu(actionMenu === emp.id ? null : emp.id)}
                             className="opacity-0 group-hover:opacity-100 transition h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"
@@ -219,7 +366,14 @@ export default function AdminEmployeesPage() {
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
                           {actionMenu === emp.id && (
-                            <div className="absolute right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 w-48 animate-in fade-in zoom-in-95 duration-100">
+                            <div className="absolute right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 w-52 animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                onClick={() => { setResetTarget(emp); setActionMenu(null); }}
+                                className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-indigo-50 text-indigo-700 transition flex items-center gap-2"
+                              >
+                                <KeyRound className="h-4 w-4" /> Reset Password
+                              </button>
+                              <div className="border-t border-slate-100 my-1" />
                               <button
                                 onClick={() => handleToggleStatus(emp)}
                                 className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-slate-50 transition flex items-center gap-2"
@@ -243,7 +397,14 @@ export default function AdminEmployeesPage() {
         )}
       </div>
 
+      {/* Modals */}
       <AddEmployeeModal isOpen={isInviteOpen} onClose={() => { setIsInviteOpen(false); fetchEmployees(); }} />
+      {resetTarget && (
+        <ResetPasswordModal
+          employee={resetTarget}
+          onClose={() => { setResetTarget(null); }}
+        />
+      )}
     </div>
   );
 }

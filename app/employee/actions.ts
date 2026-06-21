@@ -3,10 +3,31 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { signSession, verifySession } from "@/lib/supabase/session-crypto";
 import { sendPasswordResetEmail } from "@/lib/notifications/email";
+
+/**
+ * Returns the base URL for generating links in emails.
+ * Priority:
+ * 1. NEXT_PUBLIC_APP_URL env var (set this in production!)
+ * 2. x-forwarded-host / host header from the incoming request
+ * 3. Fallback to localhost:3000
+ */
+async function getBaseUrl(): Promise<string> {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+  try {
+    const headerStore = await headers();
+    const host = headerStore.get('x-forwarded-host') || headerStore.get('host') || 'localhost:3000';
+    const proto = headerStore.get('x-forwarded-proto') || 'http';
+    return `${proto}://${host}`;
+  } catch {
+    return 'http://localhost:3000';
+  }
+}
 
 /**
  * Audit Logging helper for employee-related activities.
@@ -151,25 +172,32 @@ export async function inviteEmployee(formData: FormData) {
   // Audit logging for employee invited
   await logAudit("invite", `Invited employee ${fullName} (${normalizedEmail})`);
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/employee/create-account?token=${token}`;
+  const baseUrl = await getBaseUrl();
+  const inviteLink = `${baseUrl}/employee/create-account?token=${token}`;
 
   return { success: true, link: inviteLink, employee: data };
 }
 
 export async function verifyToken(token: string) {
+  if (!token || token.length < 10) return { error: "Invalid invitation link." };
+  
   const supabase = await createAdminClient();
   const { data, error } = await supabase
     .from("employees")
     .select("id, email, full_name, status, invitation_expires_at")
     .eq("invitation_token", token)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return { error: "Invalid invitation link." };
-  if (data.status !== "invited") return { error: "Account has already been created." };
+  if (error) {
+    console.error("[verifyToken] DB error:", error.message);
+    return { error: "Invalid invitation link." };
+  }
+  if (!data) return { error: "This invitation link is invalid or has already been used." };
+  if (data.status !== "invited") return { error: "This account has already been created. Please log in instead." };
 
   // Expiration check (48 hours)
   if (data.invitation_expires_at && new Date(data.invitation_expires_at) < new Date()) {
-    return { error: "This invitation link has expired. Please request a new one from your Admin." };
+    return { error: "This invitation link has expired. Please ask your admin to resend the invite." };
   }
 
   return { success: true, employee: data };
@@ -357,7 +385,8 @@ export async function resendEmployeeInvite(employeeId: string) {
     return { error: `Failed to refresh invitation token: ${updateErr.message}` };
   }
 
-  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/employee/create-account?token=${newToken}`;
+  const baseUrl = await getBaseUrl();
+  const inviteLink = `${baseUrl}/employee/create-account?token=${newToken}`;
   return { success: true, link: inviteLink };
 }
 
@@ -429,7 +458,7 @@ export async function getEmployeeSession() {
 /**
  * Request password reset link for employees.
  */
-export async function requestEmployeePasswordReset(email: string, origin: string) {
+export async function requestEmployeePasswordReset(email: string, origin?: string) {
   try {
     if (!email) {
       return { error: "Email is required." };
@@ -469,7 +498,8 @@ export async function requestEmployeePasswordReset(email: string, origin: string
       return { error: "Failed to generate reset token." };
     }
 
-    const resetUrl = `${origin}/employee/reset-password?token=${token}`;
+    const baseUrl = await getBaseUrl();
+    const resetUrl = `${baseUrl}/employee/reset-password?token=${token}`;
     const emailRes = await sendPasswordResetEmail({
       to: employee.email,
       token,
@@ -685,3 +715,49 @@ export async function deleteEmployee(employeeId: string) {
   }
 }
 
+/**
+ * Super admin directly sets a new password for any employee.
+ * Does NOT require the old password.
+ */
+export async function adminResetEmployeePassword(employeeId: string, newPassword: string) {
+  try {
+    if (!newPassword || newPassword.length < 8) {
+      return { error: "Password must be at least 8 characters." };
+    }
+
+    const supabase = await createAdminClient();
+
+    // Fetch employee info for audit log
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("full_name, email")
+      .eq("id", employeeId)
+      .maybeSingle();
+
+    if (!employee) {
+      return { error: "Employee not found." };
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+
+    const { error } = await supabase
+      .from("employees")
+      .update({ password_hash: hash })
+      .eq("id", employeeId);
+
+    if (error) {
+      console.error("[ADMIN_RESET_PASSWORD_ERROR]", error);
+      return { error: `Failed to reset password: ${error.message}` };
+    }
+
+    await logAudit(
+      "password_reset",
+      `Admin reset password for employee ${employee.full_name} (${employee.email})`
+    );
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[ADMIN_RESET_PASSWORD_CRITICAL]", err);
+    return { error: err.message };
+  }
+}

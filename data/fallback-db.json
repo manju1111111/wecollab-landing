@@ -1,6 +1,21 @@
 {
   "employee_tasks": [],
-  "employee_activity": [],
+  "employee_activity": [
+    {
+      "session_start": "2026-06-21T09:48:56.967Z",
+      "current_activity": "Logged In",
+      "employee_id": "80a4dc8d-f8b6-46a7-b9ea-50055507fdfa",
+      "status": "online",
+      "last_active": "2026-06-21T09:48:56.967Z"
+    },
+    {
+      "session_start": "2026-06-21T09:59:32.297Z",
+      "current_activity": "Logged In",
+      "employee_id": "dfb47581-6b17-41c8-88c1-dc37865670b0",
+      "status": "online",
+      "last_active": "2026-06-21T09:59:32.297Z"
+    }
+  ],
   "notifications": [],
   "newsletters": [
     {

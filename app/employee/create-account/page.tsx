@@ -20,11 +20,27 @@ export default async function CreateAccountPage(props: { searchParams: Promise<{
   const result = await verifyToken(token);
 
   if (result.error || !result.employee) {
+    const isAlreadyCreated = result.error?.includes("already been created");
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 max-w-md w-full text-center">
-          <h1 className="text-xl font-bold text-slate-900 mb-2">Expired Invitation</h1>
-          <p className="text-slate-500 text-[14px]">{result.error || "This invitation has expired or the account was already created."}</p>
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">{isAlreadyCreated ? "✅" : "⛔"}</span>
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mb-2">
+            {isAlreadyCreated ? "Account Already Active" : "Invalid Invitation"}
+          </h1>
+          <p className="text-slate-500 text-[14px] mb-6">
+            {result.error || "This invitation has expired or the account was already created."}
+          </p>
+          {isAlreadyCreated && (
+            <a
+              href="/employee/login"
+              className="inline-flex items-center justify-center w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[14px] rounded-xl transition-colors"
+            >
+              Go to Login →
+            </a>
+          )}
         </div>
       </div>
     );
