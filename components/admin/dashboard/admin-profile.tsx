@@ -29,12 +29,21 @@ export function AdminProfile() {
       
       {/* Absolute Centered Avatar */}
       <div className="absolute top-[72px] left-1/2 -translate-x-1/2 h-20 w-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white z-10">
-        <Image 
-          src={profile.profileImage}
-          alt="Profile Photo"
-          fill
-          className="object-cover"
-        />
+        {profile.avatarUrl ? (
+          <Image 
+            src={profile.avatarUrl}
+            alt="Profile Photo"
+            fill
+            unoptimized
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <span className="text-white text-2xl font-bold">
+              {(profile.fullName || profile.email || "A")[0].toUpperCase()}
+            </span>
+          </div>
+        )}
       </div>
       
       <div className="px-6 pb-6 pt-12 flex flex-col flex-1">
@@ -44,11 +53,13 @@ export function AdminProfile() {
           <p className="text-[12px] text-slate-500 mt-0.5 truncate w-full">{profile.email}</p>
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-              {profile.role}
+              {profile.role || "Admin"}
             </span>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
-              <MapPin className="h-3 w-3 shrink-0" /> {profile.timezone}
-            </div>
+            {(profile.location) && (
+              <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
+                <MapPin className="h-3 w-3 shrink-0" /> {profile.location}
+              </div>
+            )}
           </div>
         </div>
 

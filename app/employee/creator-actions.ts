@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getValidatedEmployeeSession } from "@/app/employee/actions";
+
 
 export async function saveCreatorNote({
   employeeId,
@@ -14,6 +16,14 @@ export async function saveCreatorNote({
   noteText: string;
   dealStatus: string;
 }) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+  if (session.id !== employeeId && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -142,6 +152,14 @@ export async function updateDealStatus({
   creatorId: string;
   dealStatus: string;
 }) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+  if (session.id !== employeeId && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -277,6 +295,14 @@ export async function submitCreatorForReview({
     category?: string;
   };
 }) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+  if (session.id !== employeeId && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase

@@ -53,8 +53,8 @@ export default function AdminLayout({
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    localStorage.removeItem("wecollab_admin_profile");
-    document.cookie = "wecollab_admin_profile=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    // Clear only device-local UI preferences
+    localStorage.removeItem("wecollab_ui_prefs");
     router.push("/admin/login");
     router.refresh();
   };

@@ -4,8 +4,8 @@ const path = require('path');
 const dns = require('dns');
 require('dotenv').config({ path: '.env.local' });
 
-const dbHost = "db.xkssgycaqwjqajipoooy.supabase.co";
-const dbUser = "postgres";
+const dbHost = "aws-1-ap-southeast-2.pooler.supabase.com";
+const dbUser = "postgres.xkssgycaqwjqajipoooy";
 const dbName = "postgres";
 
 const passwords = [

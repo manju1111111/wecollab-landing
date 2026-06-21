@@ -53,11 +53,19 @@ export function AdminProfileDropdown({ onLogout }: AdminProfileDropdownProps) {
         }`}
       >
         <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-200 border-2 border-white shadow-sm shrink-0">
-          <Image src={profile.profileImage} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
+          {profile.avatarUrl ? (
+            <Image src={profile.avatarUrl} alt="Profile" width={40} height={40} className="w-full h-full object-cover" unoptimized />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <span className="text-white text-sm font-bold">
+                {(profile.fullName || profile.email || "?")[0].toUpperCase()}
+              </span>
+            </div>
+          )}
         </div>
         <div className="text-left hidden sm:block">
-          <div className="text-[13px] font-bold text-slate-900 leading-tight">{profile.fullName}</div>
-          <div className="text-[11px] font-medium text-slate-500">{profile.role}</div>
+          <div className="text-[13px] font-bold text-slate-900 leading-tight">{profile.fullName || profile.email || "Admin"}</div>
+          <div className="text-[11px] font-medium text-slate-500">{profile.role || "Admin"}</div>
         </div>
         <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform hidden sm:block ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -66,7 +74,7 @@ export function AdminProfileDropdown({ onLogout }: AdminProfileDropdownProps) {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 py-2 z-40 transform origin-top-right transition-all">
           <div className="px-4 py-3 border-b border-slate-100 mb-1">
-            <p className="text-[14px] font-bold text-slate-900">{profile.fullName}</p>
+            <p className="text-[14px] font-bold text-slate-900">{profile.fullName || profile.email || "Admin"}</p>
             <p className="text-[12px] text-slate-500 font-medium">{profile.email}</p>
           </div>
           

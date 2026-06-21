@@ -8,6 +8,84 @@ import { revalidatePath } from "next/cache";
 import { signSession, verifySession } from "@/lib/supabase/session-crypto";
 import { sendPasswordResetEmail } from "@/lib/notifications/email";
 
+/**
+ * Audit Logging helper for employee-related activities.
+ */
+export async function logAudit(type: string, description: string, employeeId?: string) {
+  try {
+    const supabase = await createAdminClient();
+    let loggingEmployeeId = employeeId;
+
+    if (!loggingEmployeeId) {
+      // 1. Try to get from employee cookie session
+      const cookieStore = await cookies();
+      const sessionCookie = cookieStore.get("employee_session");
+      if (sessionCookie) {
+        const session = verifySession(sessionCookie.value);
+        if (session && session.id) {
+          loggingEmployeeId = session.id;
+        }
+      }
+    }
+
+    if (!loggingEmployeeId) {
+      // 2. Try to get from Supabase Auth (admin user)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.email) {
+        const { data: emp } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("email", user.email.toLowerCase())
+          .maybeSingle();
+        if (emp) {
+          loggingEmployeeId = emp.id;
+        }
+      }
+    }
+
+    // Fallback to Super Admin ID if no user session found
+    if (!loggingEmployeeId) {
+      loggingEmployeeId = "b51ef746-a51d-4f88-a753-4a3474f3f877";
+    }
+
+    await supabase.from("employee_activity_log").insert({
+      employee_id: loggingEmployeeId,
+      type,
+      description
+    });
+  } catch (err) {
+    console.error("[AUDIT_LOG_ERROR]", err);
+  }
+}
+
+/**
+ * Session verification checking both session signature and database active status.
+ */
+export async function getValidatedEmployeeSession() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("employee_session");
+  if (!sessionCookie) return null;
+
+  const session = verifySession(sessionCookie.value);
+  if (!session || !session.id) return null;
+
+  const adminSupabase = await createAdminClient();
+  const { data: employee, error } = await adminSupabase
+    .from("employees")
+    .select("id, status, role")
+    .eq("id", session.id)
+    .maybeSingle();
+
+  if (error || !employee || employee.status !== "active") {
+    return null;
+  }
+
+  return {
+    ...session,
+    role: employee.role,
+  };
+}
+
 export async function inviteEmployee(formData: FormData) {
   const supabase = await createAdminClient();
   
@@ -22,6 +100,28 @@ export async function inviteEmployee(formData: FormData) {
     return { error: "Missing required fields" };
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Prevent duplicate invitations by checking status first
+  const { data: existing } = await supabase
+    .from("employees")
+    .select("id, status")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === "invited") {
+      return { error: "An invitation has already been sent to this email. You can resend it from the employee list." };
+    }
+    if (existing.status === "active") {
+      return { error: "An active employee with this email already exists." };
+    }
+    if (existing.status === "deactivated") {
+      return { error: "A deactivated employee with this email already exists. You can reactivate them from the employee list." };
+    }
+    return { error: "An employee with this email already exists." };
+  }
+
   const token = uuidv4();
   const invitedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48 hours
@@ -30,7 +130,7 @@ export async function inviteEmployee(formData: FormData) {
     .from("employees")
     .insert({
       full_name: fullName,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       phone,
       department,
       role,
@@ -44,12 +144,12 @@ export async function inviteEmployee(formData: FormData) {
     .single();
 
   if (error) {
-    if (error.code === '23505') {
-      return { error: "An employee with this email already exists." };
-    }
     console.error("Invite Error:", error);
     return { error: `Database Error: ${error.message || "Failed to create invitation"}` };
   }
+
+  // Audit logging for employee invited
+  await logAudit("invite", `Invited employee ${fullName} (${normalizedEmail})`);
 
   const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/employee/create-account?token=${token}`;
 
@@ -114,6 +214,9 @@ export async function createAccount(token: string, formData: FormData) {
     console.error("Create Account Error:", error);
     return { error: "Failed to setup account." };
   }
+
+  // Audit logging for employee activated (account created)
+  await logAudit("activate", `Employee ${employee.full_name} activated their account`, employee.id);
 
   // Automatically log in the user immediately after account setup for premier UX
   const sessionData = {
@@ -259,15 +362,9 @@ export async function resendEmployeeInvite(employeeId: string) {
 }
 
 export async function updateEmployeeProfile(formData: FormData) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("employee_session");
-  if (!sessionCookie) {
-    return { error: "Not authenticated" };
-  }
-
-  let session = verifySession(sessionCookie.value);
+  const session = await getValidatedEmployeeSession();
   if (!session) {
-    return { error: "Invalid session" };
+    return { error: "Unauthorized or deactivated account" };
   }
 
   const employeeId = session.id;
@@ -306,6 +403,7 @@ export async function updateEmployeeProfile(formData: FormData) {
     ...session,
     full_name: fullName,
   };
+  const cookieStore = await cookies();
   cookieStore.set("employee_session", signSession(updatedSession), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -478,3 +576,112 @@ export async function verifyEmployeeResetToken(token: string) {
     return { isValid: false };
   }
 }
+
+export async function toggleEmployeeStatus(employeeId: string, currentStatus: string) {
+  try {
+    const supabase = await createAdminClient();
+    const newStatus = currentStatus === "deactivated" ? "active" : "deactivated";
+    
+    // Fetch details for logging
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("full_name, email")
+      .eq("id", employeeId)
+      .maybeSingle();
+
+    const { error } = await supabase
+      .from("employees")
+      .update({ status: newStatus })
+      .eq("id", employeeId);
+
+    if (error) {
+      console.error("[TOGGLE_EMPLOYEE_STATUS_ERROR]", error);
+      return { error: `Failed to update status: ${error.message}` };
+    }
+
+    const empName = employee?.full_name || "Unknown";
+    await logAudit(
+      newStatus === "deactivated" ? "deactivate" : "reactivate",
+      `Employee ${empName} (${employee?.email || ""}) status updated to ${newStatus}`
+    );
+
+    return { success: true, newStatus };
+  } catch (err: any) {
+    console.error("[TOGGLE_EMPLOYEE_STATUS_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+export async function changeEmployeeRole(employeeId: string, newRole: string) {
+  try {
+    const supabase = await createAdminClient();
+    
+    if (!["Admin", "Manager", "Researcher", "Employee"].includes(newRole)) {
+      return { error: "Invalid role specified." };
+    }
+
+    // Fetch employee details before update
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("full_name, role")
+      .eq("id", employeeId)
+      .maybeSingle();
+
+    if (!employee) {
+      return { error: "Employee not found." };
+    }
+
+    const { error } = await supabase
+      .from("employees")
+      .update({ role: newRole })
+      .eq("id", employeeId);
+
+    if (error) {
+      console.error("[CHANGE_ROLE_ERROR]", error);
+      return { error: `Failed to change role: ${error.message}` };
+    }
+
+    await logAudit(
+      "role_change",
+      `Changed role of employee ${employee.full_name} from ${employee.role} to ${newRole}`
+    );
+    return { success: true };
+  } catch (err: any) {
+    console.error("[CHANGE_ROLE_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+export async function deleteEmployee(employeeId: string) {
+  try {
+    const supabase = await createAdminClient();
+
+    // Fetch employee details before deletion to log name
+    const { data: employee } = await supabase
+      .from("employees")
+      .select("full_name, email")
+      .eq("id", employeeId)
+      .maybeSingle();
+
+    if (!employee) {
+      return { error: "Employee not found." };
+    }
+
+    const { error } = await supabase
+      .from("employees")
+      .delete()
+      .eq("id", employeeId);
+
+    if (error) {
+      console.error("[DELETE_EMPLOYEE_ERROR]", error);
+      return { error: `Failed to delete employee: ${error.message}` };
+    }
+
+    await logAudit("delete", `Employee ${employee.full_name} (${employee.email}) was deleted`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("[DELETE_EMPLOYEE_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { insertTask, updateTaskCompletion, updateTask as updateTaskFallback, deleteTask as deleteTaskFallback } from "@/lib/supabase/fallback-db";
+import { getValidatedEmployeeSession } from "@/app/employee/actions";
 
 export async function addTask({
   employeeId,
@@ -15,6 +16,15 @@ export async function addTask({
   dueDate: string | null;
   creatorId: string | null;
 }) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+
+  if (session.id !== employeeId && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
   const supabase = await createClient();
 
   const { data: task, error } = await insertTask(supabase, {
@@ -23,6 +33,7 @@ export async function addTask({
     due_date: dueDate || null,
     creator_id: creatorId || null,
   });
+
 
   if (error) {
     console.error("[ADD_TASK_ERROR]", error);
@@ -34,6 +45,11 @@ export async function addTask({
 }
 
 export async function completeTask(taskId: string) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+
   const supabase = await createClient();
 
   // Get task info before updating so we know employee ID and task title
@@ -49,7 +65,12 @@ export async function completeTask(taskId: string) {
     console.error("[FETCH_TASK_PRE_COMPLETE_ERROR]", e);
   }
 
+  if (taskData && taskData.employee_id !== session.id && !["admin", "manager"].includes(session.role.toLowerCase())) {
+    return { error: "Access denied." };
+  }
+
   const { error } = await updateTaskCompletion(supabase, taskId, new Date().toISOString());
+
 
   if (error) {
     console.error("[COMPLETE_TASK_ERROR]", error);
@@ -85,9 +106,27 @@ export async function updateTask(
   taskId: string,
   updates: { completed_at?: string | null; due_date?: string | null }
 ) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+
   const supabase = await createClient();
 
+  // Verify task belongs to user or is admin/manager
+  try {
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const allTasks = await getTasks(supabase);
+    const matched = allTasks.find((t: any) => t.id === taskId);
+    if (matched && matched.employee_id !== session.id && !["admin", "manager"].includes(session.role.toLowerCase())) {
+      return { error: "Access denied." };
+    }
+  } catch (e) {
+    console.warn("Failed to check task ownership:", e);
+  }
+
   const { error } = await updateTaskFallback(supabase, taskId, updates);
+
 
   if (error) {
     console.error("[UPDATE_TASK_ERROR]", error);
@@ -99,9 +138,27 @@ export async function updateTask(
 }
 
 export async function deleteTask(taskId: string) {
+  const session = await getValidatedEmployeeSession();
+  if (!session) {
+    return { error: "Unauthorized or deactivated account." };
+  }
+
   const supabase = await createClient();
 
+  // Verify task belongs to user or is admin/manager
+  try {
+    const { getTasks } = await import("@/lib/supabase/fallback-db");
+    const allTasks = await getTasks(supabase);
+    const matched = allTasks.find((t: any) => t.id === taskId);
+    if (matched && matched.employee_id !== session.id && !["admin", "manager"].includes(session.role.toLowerCase())) {
+      return { error: "Access denied." };
+    }
+  } catch (e) {
+    console.warn("Failed to check task ownership:", e);
+  }
+
   const { error } = await deleteTaskFallback(supabase, taskId);
+
 
   if (error) console.error("[DELETE_TASK_ERROR]", error);
   revalidatePath("/employee");

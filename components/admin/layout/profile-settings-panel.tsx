@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { 
   X, Camera, Save, LogOut, CheckCircle2, 
-  Bell, Moon, Shield, User, Globe, AlertCircle, Smartphone
+  Bell, Shield, User, Globe, Smartphone,
+  Loader2, AlertCircle
 } from "lucide-react";
 import Image from "next/image";
 import { useAdminProfile } from "./admin-profile-context";
@@ -15,50 +16,134 @@ interface ProfileSettingsPanelProps {
 }
 
 export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSettingsPanelProps) {
-  const { profile, updateProfile } = useAdminProfile();
+  const { profile, updateProfile, refreshProfile } = useAdminProfile();
   
   const [activeTab, setActiveTab] = useState<"profile" | "account" | "security">("profile");
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Profile updated successfully!");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [hasChanges, setHasChanges] = useState(false);
   
-  // Form State
-  const [formData, setFormData] = useState(profile);
+  // Form State — mirrors profile fields editable by user
+  const [formData, setFormData] = useState({
+    fullName: "",
+    phone: "",
+    company: "",
+    bio: "",
+    location: "",
+    avatarUrl: "",
+    // UI prefs
+    darkMode: false,
+    emailNotif: true,
+    smsNotif: false,
+    twoFactor: true,
+    // timezone/language — client only
+    timezone: "Asia/Kolkata",
+    language: "English (US)",
+  });
   
-  // Sync form data if context profile changes from outside
+  // Sync form data from context when panel opens or profile reloads
   useEffect(() => {
-    if (!hasChanges) {
-      setFormData(profile);
+    if (!hasChanges || !isOpen) {
+      setFormData({
+        fullName: profile.fullName,
+        phone: profile.phone,
+        company: profile.company,
+        bio: profile.bio,
+        location: profile.location,
+        avatarUrl: profile.avatarUrl,
+        darkMode: profile.darkMode,
+        emailNotif: profile.emailNotif,
+        smsNotif: profile.smsNotif,
+        twoFactor: profile.twoFactor,
+        timezone: "Asia/Kolkata",
+        language: "English (US)",
+      });
     }
-  }, [profile, hasChanges]);
+  }, [profile, isOpen]);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
+  const showToastMsg = (message: string, type: "success" | "error" = "success") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3500);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Update global context
-    updateProfile(formData);
-    
-    setIsSaving(false);
-    setHasChanges(false);
-    
-    // Show success toast
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+    try {
+      const res = await fetch("/api/admin/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          phone: formData.phone,
+          company: formData.company,
+          bio: formData.bio,
+          location: formData.location,
+          avatarUrl: formData.avatarUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Save failed");
+      }
+
+      const { profile: saved } = await res.json();
+
+      // Update global context with saved data from DB
+      updateProfile({
+        fullName: saved.fullName,
+        phone: saved.phone,
+        company: saved.company,
+        bio: saved.bio,
+        location: saved.location,
+        avatarUrl: saved.avatarUrl,
+        // persist UI prefs
+        darkMode: formData.darkMode,
+        emailNotif: formData.emailNotif,
+        smsNotif: formData.smsNotif,
+        twoFactor: formData.twoFactor,
+      });
+
+      setHasChanges(false);
+      showToastMsg("Profile saved to database ✓", "success");
+    } catch (err: any) {
+      console.error("[ProfileSettingsPanel] save error:", err.message);
+      showToastMsg(err.message || "Failed to save profile", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleClose = () => {
     if (hasChanges) {
       if (confirm("You have unsaved changes. Are you sure you want to close?")) {
         onClose();
-        setHasChanges(false); // reset
-        setFormData(profile); // reset to original
+        setHasChanges(false);
+        // Reset form to current profile
+        setFormData({
+          fullName: profile.fullName,
+          phone: profile.phone,
+          company: profile.company,
+          bio: profile.bio,
+          location: profile.location,
+          avatarUrl: profile.avatarUrl,
+          darkMode: profile.darkMode,
+          emailNotif: profile.emailNotif,
+          smsNotif: profile.smsNotif,
+          twoFactor: profile.twoFactor,
+          timezone: "Asia/Kolkata",
+          language: "English (US)",
+        });
       }
     } else {
       onClose();
@@ -70,14 +155,23 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showToastMsg("Image too large. Max size is 5MB.", "error");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        handleInputChange("profileImage", base64String);
+        handleInputChange("avatarUrl", base64String);
       };
       reader.readAsDataURL(file);
     }
   };
+
+  // Avatar display: show local preview if base64, otherwise show DB URL
+  const avatarDisplaySrc = formData.avatarUrl || "/default-avatar.png";
+  const isLocalAvatar = formData.avatarUrl?.startsWith("data:");
 
   if (!isOpen) return null;
 
@@ -121,12 +215,21 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                 accept="image/*" 
                 className="hidden" 
               />
-              <Image 
-                src={formData.profileImage} 
-                alt="Profile" 
-                fill 
-                className="object-cover transition-transform group-hover:scale-105 duration-300"
-              />
+              {avatarDisplaySrc && avatarDisplaySrc !== "/default-avatar.png" ? (
+                <Image 
+                  src={avatarDisplaySrc}
+                  alt="Profile" 
+                  fill
+                  unoptimized={isLocalAvatar}
+                  className="object-cover transition-transform group-hover:scale-105 duration-300"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <span className="text-white text-3xl font-bold">
+                    {(formData.fullName || profile.email || "?")[0].toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]">
                 <Camera className="h-6 w-6 text-white mb-1" />
                 <span className="text-white text-[10px] font-bold">Upload</span>
@@ -134,12 +237,12 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
             </div>
             
             <div className="text-center z-10">
-              <h3 className="text-lg font-bold text-slate-900">{formData.fullName}</h3>
-              <p className="text-[13px] font-medium text-slate-500">{formData.email}</p>
+              <h3 className="text-lg font-bold text-slate-900">{formData.fullName || profile.email}</h3>
+              <p className="text-[13px] font-medium text-slate-500">{profile.email}</p>
               
               <div className="flex items-center justify-center gap-2 mt-3">
                 <span className="bg-blue-50 text-blue-600 text-[11px] font-bold px-2.5 py-1 rounded-md">
-                  {formData.role}
+                  {profile.role || "Admin"}
                 </span>
                 <span className="flex items-center gap-1 bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-1 rounded-md">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
@@ -182,6 +285,7 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                       type="text" 
                       value={formData.fullName}
                       onChange={(e) => handleInputChange("fullName", e.target.value)}
+                      placeholder="Your full name"
                       className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
                     />
                   </div>
@@ -191,6 +295,7 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                       type="text" 
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
+                      placeholder="+91 98765 43210"
                       className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
                     />
                   </div>
@@ -198,10 +303,11 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                     <label className="text-[12px] font-semibold text-slate-700">Email Address</label>
                     <input 
                       type="email" 
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                      value={profile.email}
+                      disabled
+                      className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] bg-slate-100 text-slate-500 cursor-not-allowed"
                     />
+                    <span className="text-[11px] text-slate-400">Email is managed by your authentication provider</span>
                   </div>
                   <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
                     <label className="text-[12px] font-semibold text-slate-700">Company</label>
@@ -209,14 +315,25 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                       type="text" 
                       value={formData.company}
                       onChange={(e) => handleInputChange("company", e.target.value)}
+                      placeholder="WeCollab"
                       className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+                    <label className="text-[12px] font-semibold text-slate-700">Location</label>
+                    <input 
+                      type="text" 
+                      value={formData.location}
+                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      placeholder="Mumbai, India"
+                      className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5 col-span-2">
                     <label className="text-[12px] font-semibold text-slate-700">Role</label>
                     <input 
                       type="text" 
-                      value={formData.role}
+                      value={profile.role || "Admin"}
                       disabled
                       className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] bg-slate-100 text-slate-500 cursor-not-allowed"
                     />
@@ -227,6 +344,7 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                       value={formData.bio}
                       onChange={(e) => handleInputChange("bio", e.target.value)}
                       rows={3}
+                      placeholder="Tell us a bit about yourself..."
                       className="p-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white resize-none"
                     />
                   </div>
@@ -251,6 +369,8 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                         <option value="Asia/Kolkata">IST (Asia/Kolkata)</option>
                         <option value="America/New_York">EST (America/New_York)</option>
                         <option value="Europe/London">GMT (Europe/London)</option>
+                        <option value="America/Los_Angeles">PST (America/Los_Angeles)</option>
+                        <option value="Asia/Dubai">GST (Asia/Dubai)</option>
                       </select>
                     </div>
                     <div className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
@@ -263,6 +383,7 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                         <option value="English (US)">English (US)</option>
                         <option value="English (UK)">English (UK)</option>
                         <option value="Spanish">Spanish</option>
+                        <option value="Hindi">Hindi</option>
                       </select>
                     </div>
                   </div>
@@ -330,13 +451,6 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[12px] font-semibold text-slate-700">New Password</label>
                       <input type="password" placeholder="••••••••" className="h-10 px-3 rounded-lg border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-slate-50 focus:bg-white" />
-                      <div className="flex gap-1 mt-1">
-                        <div className="h-1 flex-1 bg-emerald-500 rounded-full"></div>
-                        <div className="h-1 flex-1 bg-emerald-500 rounded-full"></div>
-                        <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
-                        <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
-                      </div>
-                      <span className="text-[10px] text-slate-400">Medium strength</span>
                     </div>
                   </div>
                 </div>
@@ -374,7 +488,7 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
               }`}
             >
               {isSaving ? (
-                <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" /> Save Changes
@@ -387,11 +501,16 @@ export function ProfileSettingsPanel({ isOpen, onClose, onLogout }: ProfileSetti
       </div>
 
       {/* Toast Notification */}
-      <div className={`fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 z-[60] ${
+      <div className={`fixed bottom-6 right-6 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 z-[60] ${
+        toastType === "success" ? "bg-slate-900 text-white" : "bg-red-600 text-white"
+      } ${
         showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'
       }`}>
-        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-        <span className="text-[13px] font-bold">Profile updated successfully!</span>
+        {toastType === "success" 
+          ? <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+          : <AlertCircle className="h-5 w-5 text-red-200 shrink-0" />
+        }
+        <span className="text-[13px] font-bold">{toastMessage}</span>
       </div>
     </>
   );

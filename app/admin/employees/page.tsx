@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { UserPlus, Users, UserCog, Search, MoreHorizontal, ChevronRight, CheckCircle2, XCircle, Clock, Shield, Send } from "lucide-react";
 import { AddEmployeeModal } from "@/components/admin/dashboard/add-employee-modal";
-import { createClient } from "@/lib/supabase/client";
+import { toggleEmployeeStatus } from "@/app/employee/actions";
 
 interface Employee {
   id: string;
@@ -76,11 +76,11 @@ export default function AdminEmployeesPage() {
   const totalAssigned = employees.reduce((s, e) => s + e.assigned_count, 0);
 
   const handleToggleStatus = async (emp: Employee) => {
-    const newStatus = emp.status === "deactivated" ? "active" : "deactivated";
-    const supabase = createClient();
-    const { error } = await supabase.from("employees").update({ status: newStatus }).eq("id", emp.id);
-    if (!error) {
-      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: newStatus } : e));
+    const res = await toggleEmployeeStatus(emp.id, emp.status);
+    if (res.success && res.newStatus) {
+      setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: res.newStatus! } : e));
+    } else if (res.error) {
+      alert(res.error);
     }
     setActionMenu(null);
   };

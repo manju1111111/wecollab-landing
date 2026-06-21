@@ -27,28 +27,23 @@ export async function createClient() {
   )
 }
 
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
 export async function createAdminClient() {
-  const cookieStore = await cookies()
-  
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  console.log("[createAdminClient] URL:", url, "Key Length:", key ? key.length : 0);
+  if (!key) {
+    console.error("[createAdminClient] WARNING: SUPABASE_SERVICE_ROLE_KEY is missing/empty! Server actions will fail RLS.");
+  }
+  return createSupabaseClient(
+    url,
+    key,
     {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {}
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {}
-        },
-      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
     }
   )
 }
