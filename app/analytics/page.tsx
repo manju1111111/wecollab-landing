@@ -255,9 +255,9 @@ function AnalyticsPageInner() {
       {/* Floating Header Navigation */}
       <header className="w-full max-w-6xl flex items-center justify-between z-50 px-6 sm:px-8 py-5 absolute top-0 left-1/2 -translate-x-1/2">
         <Link href="/" className="flex items-center gap-2">
-          {/* Logo symbol */}
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-md">
-            <span className="text-white font-black text-lg italic tracking-tighter leading-none select-none">w</span>
+          {/* Original Logo */}
+          <div className="relative h-8 w-8 overflow-hidden rounded-xl shadow-md shrink-0">
+            <Image src="/assets/logo.jpg" alt="Wecollab Logo" fill className="object-cover" />
           </div>
           <span className="font-extrabold text-[17px] tracking-tight text-white">wecollab</span>
         </Link>
