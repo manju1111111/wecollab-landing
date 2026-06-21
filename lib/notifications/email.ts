@@ -34,7 +34,7 @@ async function sendEmail(payload: EmailPayload) {
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || "WeCollab <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM_EMAIL || "WeCollab <updates@wecollab.in>",
         to: payload.to,
         subject: payload.subject,
         html: payload.html
