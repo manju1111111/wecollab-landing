@@ -177,7 +177,7 @@ export async function sendPasswordResetEmail({
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
       <h2 style="color: #7166e5; margin-bottom: 6px;">Password Reset Request 🔑</h2>
       <p style="font-size: 14px; color: #475569; line-height: 1.6;">Hi,</p>
-      <p style="font-size: 14px; color: #475569; line-height: 1.6;">We received a request to reset the password for your WeCollab brand account. Click the button below to set a new password:</p>
+      <p style="font-size: 14px; color: #475569; line-height: 1.6;">We received a request to reset the password for your WeCollab account. Click the button below to set a new password:</p>
       <div style="text-align: center; margin: 24px 0;">
         <a href="${resetUrl}" style="display: inline-block; background-color: #7166e5; color: #ffffff; text-decoration: none; padding: 12px 24px; font-weight: bold; border-radius: 9999px; font-size: 13px;">Reset Password</a>
       </div>

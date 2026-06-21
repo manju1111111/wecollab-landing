@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { signSession, verifySession } from "@/lib/supabase/session-crypto";
+import { sendPasswordResetEmail } from "@/lib/notifications/email";
 
 export async function inviteEmployee(formData: FormData) {
   const supabase = await createAdminClient();
@@ -325,4 +326,155 @@ export async function getEmployeeSession() {
   const sessionCookie = cookieStore.get("employee_session");
   if (!sessionCookie) return null;
   return verifySession(sessionCookie.value);
+}
+
+/**
+ * Request password reset link for employees.
+ */
+export async function requestEmployeePasswordReset(email: string, origin: string) {
+  try {
+    if (!email) {
+      return { error: "Email is required." };
+    }
+
+    const adminSupabase = await createAdminClient();
+
+    const { data: employee, error } = await adminSupabase
+      .from("employees")
+      .select("id, email, full_name")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+
+    if (error) {
+      console.error("[REQUEST_EMPLOYEE_RESET_DB_ERROR]", error);
+      return { error: error.message };
+    }
+
+    // Safe response: return success even if email doesn't exist to prevent email harvesting
+    if (!employee) {
+      return { success: true };
+    }
+
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    const { error: updateError } = await adminSupabase
+      .from("employees")
+      .update({
+        reset_token: token,
+        reset_token_expires_at: expiresAt
+      })
+      .eq("id", employee.id);
+
+    if (updateError) {
+      console.error("[REQUEST_EMPLOYEE_RESET_UPDATE_ERROR]", updateError);
+      return { error: "Failed to generate reset token." };
+    }
+
+    const resetUrl = `${origin}/employee/reset-password?token=${token}`;
+    const emailRes = await sendPasswordResetEmail({
+      to: employee.email,
+      token,
+      resetUrl
+    });
+
+    if (!emailRes.success) {
+      console.error("[REQUEST_EMPLOYEE_RESET_EMAIL_ERROR]", emailRes.error);
+      return { error: "Failed to send reset email." };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[REQUEST_EMPLOYEE_RESET_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Reset employee password using token.
+ */
+export async function resetEmployeePasswordWithToken(token: string, newPassword: string) {
+  try {
+    if (!token || !newPassword) {
+      return { error: "Token and new password are required." };
+    }
+
+    if (newPassword.length < 8) {
+      return { error: "Password must be at least 8 characters long." };
+    }
+
+    const adminSupabase = await createAdminClient();
+
+    // Check if token exists and is valid
+    const { data: employee, error } = await adminSupabase
+      .from("employees")
+      .select("id, reset_token_expires_at")
+      .eq("reset_token", token)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[RESET_EMPLOYEE_PASSWORD_DB_ERROR]", error);
+      return { error: error.message };
+    }
+
+    if (!employee) {
+      return { error: "Invalid or expired password reset token." };
+    }
+
+    const isExpired = new Date(employee.reset_token_expires_at).getTime() < Date.now();
+    if (isExpired) {
+      return { error: "The password reset link has expired." };
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+
+    const { error: updateError } = await adminSupabase
+      .from("employees")
+      .update({
+        password_hash: hash,
+        reset_token: null,
+        reset_token_expires_at: null
+      })
+      .eq("id", employee.id);
+
+    if (updateError) {
+      console.error("[RESET_EMPLOYEE_PASSWORD_UPDATE_ERROR]", updateError);
+      return { error: "Failed to update password." };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[RESET_EMPLOYEE_PASSWORD_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Verify if employee reset token is valid and not expired.
+ */
+export async function verifyEmployeeResetToken(token: string) {
+  try {
+    if (!token) return { isValid: false };
+
+    const adminSupabase = await createAdminClient();
+    const { data: employee, error } = await adminSupabase
+      .from("employees")
+      .select("id, reset_token_expires_at")
+      .eq("reset_token", token)
+      .maybeSingle();
+
+    if (error || !employee) {
+      return { isValid: false };
+    }
+
+    const isExpired = new Date(employee.reset_token_expires_at).getTime() < Date.now();
+    if (isExpired) {
+      return { isValid: false };
+    }
+
+    return { isValid: true };
+  } catch (err) {
+    console.error("[VERIFY_EMPLOYEE_TOKEN_CRITICAL]", err);
+    return { isValid: false };
+  }
 }
