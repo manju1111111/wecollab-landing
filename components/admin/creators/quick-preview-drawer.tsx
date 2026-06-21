@@ -29,6 +29,24 @@ export function QuickPreviewDrawer({
       });
       const data = await res.json();
       if (data.success) {
+        if (data.runId) {
+          // Poll for status
+          let isDone = false;
+          let attempts = 0;
+          while (!isDone && attempts < 30) {
+            attempts++;
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const statusRes = await fetch(`/api/admin/enrich-status?runId=${data.runId}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.status === "SUCCESS") {
+                isDone = true;
+              } else if (statusData.status === "FAILURE" || statusData.status === "CANCELED" || statusData.status === "TIMED_OUT") {
+                throw new Error(`Enrichment failed with status: ${statusData.status}`);
+              }
+            }
+          }
+        }
         alert("Creator successfully re-categorized!");
         window.location.reload();
       } else {
@@ -40,6 +58,7 @@ export function QuickPreviewDrawer({
       setIsRecategorizing(false);
     }
   };
+
 
   if (!creator) return null;
 

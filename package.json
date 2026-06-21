@@ -13,6 +13,8 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/typography": "^0.5.20",
+    "@trigger.dev/nextjs": "^2.3.19",
+    "@trigger.dev/sdk": "^2.3.19",
     "@types/html2canvas": "^0.5.35",
     "algoliasearch": "^5.52.1",
     "bcryptjs": "^3.0.3",

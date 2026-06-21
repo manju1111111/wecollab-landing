@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { insertTask, updateTaskCompletion, updateTask as updateTaskFallback, deleteTask as deleteTaskFallback } from "@/lib/supabase/fallback-db";
-import { getValidatedEmployeeSession } from "@/app/employee/actions";
+import { getValidatedEmployeeSession, logAudit } from "@/app/employee/actions";
+
 
 export async function addTask({
   employeeId,
@@ -38,6 +39,13 @@ export async function addTask({
   if (error) {
     console.error("[ADD_TASK_ERROR]", error);
     return { error: "Failed to add task" };
+  }
+
+  // Activity log for task creation
+  try {
+    await logAudit("task_create", `New task created: "${title}"`, employeeId);
+  } catch (e) {
+    console.error("[ADD_TASK_AUDIT_ERROR]", e);
   }
 
   revalidatePath("/employee");

@@ -91,6 +91,24 @@ export function AddCreatorModal({
       const data = await res.json();
       
       if (data.success) {
+        if (data.runId) {
+          setStatusMessage("Enqueuing and processing Trigger.dev background task...");
+          let isDone = false;
+          let attempts = 0;
+          while (!isDone && attempts < 30) {
+            attempts++;
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const statusRes = await fetch(`/api/admin/enrich-status?runId=${data.runId}`);
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.status === "SUCCESS") {
+                isDone = true;
+              } else if (statusData.status === "FAILURE" || statusData.status === "CANCELED" || statusData.status === "TIMED_OUT") {
+                throw new Error(`Enrichment failed with status: ${statusData.status}`);
+              }
+            }
+          }
+        }
         setStatusMessage("Success! Creator has been auto-onboarded with AI-mapped tags.");
         alert(`Successfully onboarded @${username}!`);
         onClose();
@@ -106,6 +124,7 @@ export function AddCreatorModal({
       setIsAutoOnboarding(false);
     }
   };
+
 
 
   // Semantic AI Tag Suggester States

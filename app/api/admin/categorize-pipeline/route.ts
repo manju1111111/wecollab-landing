@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import { CREATOR_CATEGORIES } from "@/data/creator-categories";
 import { getScrapeProvider, type CreatorScrapedData } from "@/lib/scraper-providers";
 import { verifyEmail } from "@/lib/email-verifier";
+import { client } from "@/lib/trigger";
+
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -241,6 +244,30 @@ export async function POST(req: Request) {
     
     username = rawUsername.replace("@", "").trim();
     creatorId = providedCreatorId || null;
+
+    // Feature Flag for V2 Trigger.dev Pipeline (Phase 1)
+    const isV2Enabled = process.env.CREATOR_V2_ENABLED === "true";
+    if (isV2Enabled) {
+      console.log(`[PIPELINE_V2] Routing enrichment request for @${username} to Trigger.dev...`);
+      
+      const run = await client.invokeJob("creator-enrichment-v2", {
+        payload: {
+          username,
+          creatorId,
+          provider,
+        }
+      });
+
+      console.log(`[PIPELINE_V2] Dispatched Trigger.dev run: ${run.id}. Returning immediately.`);
+
+      return NextResponse.json({
+        success: true,
+        message: `Creator @${username} enrichment job enqueued.`,
+        runId: run.id,
+      });
+    }
+
+
 
     if (!process.env.GEMINI_API_KEY) {
       throw new Error("GEMINI_API_KEY is missing on the server.");

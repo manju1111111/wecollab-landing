@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/server";
+import { logAudit } from "@/app/employee/actions";
 
 interface ContractPayload {
   campaignId: string;
@@ -60,6 +61,13 @@ export async function createContract(payload: ContractPayload) {
         status: "unpaid",
         due_date: dueDate.toISOString().split("T")[0],
       });
+
+    // Activity log
+    try {
+      await logAudit("contract_create", `Contract created for campaign (${payload.campaignId}), payout ₹${payload.payoutAmount.toLocaleString()}`);
+    } catch (e) {
+      console.error("[CREATE_CONTRACT_AUDIT_ERROR]", e);
+    }
 
     return { success: true, contract };
   } catch (err: any) {
@@ -189,9 +197,91 @@ export async function signContract(contractId: string) {
       console.error("[SIGN_CONTRACT_EMAIL_ERROR]", emailErr);
     }
 
+    // Activity log
+    try {
+      await logAudit("contract_signed", `Contract ${contractId.slice(0, 8)} signed and binding`);
+    } catch (e) {
+      console.error("[SIGN_CONTRACT_AUDIT_ERROR]", e);
+    }
+
     return { success: true };
   } catch (err: any) {
     console.error("[SIGN_CONTRACT_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Deletes a contract and its associated invoice.
+ */
+export async function deleteContract(contractId: string) {
+  try {
+    if (contractId.includes("mock")) {
+      return { success: true, isMock: true };
+    }
+    const supabase = await createAdminClient();
+    const { error } = await supabase
+      .from("contracts")
+      .delete()
+      .eq("id", contractId);
+
+    if (error) {
+      if (error.message.includes("does not exist")) {
+        return { success: true, isMock: true };
+      }
+      console.error("[DELETE_CONTRACT_ERROR]", error);
+      return { error: error.message };
+    }
+
+    try {
+      await logAudit("contract_delete", `Contract ${contractId.slice(0, 8)} deleted`);
+    } catch (e) {
+      console.error("[DELETE_CONTRACT_AUDIT_ERROR]", e);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[DELETE_CONTRACT_CRITICAL]", err);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Updates a contract's payout amount and/or terms.
+ */
+export async function updateContract(
+  contractId: string,
+  updates: { payout_amount?: number; terms?: string }
+) {
+  try {
+    if (contractId.includes("mock")) {
+      return { success: true, isMock: true };
+    }
+    const supabase = await createAdminClient();
+    const { data, error } = await supabase
+      .from("contracts")
+      .update(updates)
+      .eq("id", contractId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.message.includes("does not exist")) {
+        return { success: true, isMock: true };
+      }
+      console.error("[UPDATE_CONTRACT_ERROR]", error);
+      return { error: error.message };
+    }
+
+    try {
+      await logAudit("contract_update", `Contract ${contractId.slice(0, 8)} updated`);
+    } catch (e) {
+      console.error("[UPDATE_CONTRACT_AUDIT_ERROR]", e);
+    }
+
+    return { success: true, contract: data };
+  } catch (err: any) {
+    console.error("[UPDATE_CONTRACT_CRITICAL]", err);
     return { error: err.message };
   }
 }

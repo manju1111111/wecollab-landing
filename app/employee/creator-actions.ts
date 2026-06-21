@@ -347,6 +347,25 @@ export async function submitCreatorForReview({
     console.error("[SUBMIT_FOR_REVIEW_NOTIF_ERROR]", notifErr);
   }
 
+  // Partial Algolia update: keep verification_status in sync for search
+  try {
+    const { algoliasearch } = await import("algoliasearch");
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const adminKey = process.env.ALGOLIA_ADMIN_KEY;
+    if (appId && adminKey) {
+      const client = algoliasearch(appId, adminKey);
+      await client.partialUpdateObject({
+        indexName: "creators",
+        objectID: creatorId,
+        attributesToUpdate: {
+          verification_status: "Ready for Review",
+        } as any,
+      });
+    }
+  } catch (algoliaErr) {
+    console.error("[SUBMIT_FOR_REVIEW_ALGOLIA_ERROR]", algoliaErr);
+  }
+
   revalidatePath("/employee");
   revalidatePath("/employee/creators");
   revalidatePath("/admin/creators");
@@ -382,7 +401,6 @@ export async function assignCreatorToEmployee({
 
   // Create an audit entry or log note
   try {
-    // Insert fallback logs or add note
     await supabase
       .from("employee_creator_notes")
       .upsert(
@@ -393,8 +411,30 @@ export async function assignCreatorToEmployee({
     console.error("[ASSIGN_CREATOR_NOTE_UPSERT_FAILED]", e);
   }
 
+  // Notify the employee that a creator was assigned to them
+  try {
+    const { data: creator } = await supabase
+      .from("creators")
+      .select("name, username")
+      .eq("id", creatorId)
+      .single();
+
+    const creatorLabel = creator?.username ? `@${creator.username}` : creator?.name || "A creator";
+
+    const { createNotification } = await import("@/lib/supabase/notifications");
+    await createNotification({
+      userId: employeeId,
+      userType: "employee",
+      type: "assignment",
+      title: "New Creator Assigned 🎯",
+      body: `${creatorLabel} has been assigned to your portfolio.`,
+      link: "/employee/creators",
+    });
+  } catch (notifErr) {
+    console.error("[ASSIGN_CREATOR_NOTIF_ERROR]", notifErr);
+  }
+
   revalidatePath("/employee");
   revalidatePath("/employee/pipeline");
   return { success: true };
 }
-

@@ -46,18 +46,18 @@
       "last_active": "2026-06-21T09:48:56.967Z"
     },
     {
-      "session_start": "2026-06-21T12:24:36.049Z",
-      "current_activity": "Idle / Away",
+      "session_start": "2026-06-21T16:13:13.139Z",
+      "current_activity": "Viewing Dashboard",
       "employee_id": "dfb47581-6b17-41c8-88c1-dc37865670b0",
-      "status": "away",
-      "last_active": "2026-06-21T14:04:34.541Z"
+      "status": "online",
+      "last_active": "2026-06-21T16:13:13.139Z"
     },
     {
-      "session_start": "2026-06-21T14:04:28.553Z",
+      "session_start": "2026-06-21T16:19:36.103Z",
       "current_activity": "Idle / Away",
       "employee_id": "bf274480-7201-46b0-9616-6272dd56b9aa",
       "status": "away",
-      "last_active": "2026-06-21T14:04:36.058Z"
+      "last_active": "2026-06-21T16:28:36.044Z"
     }
   ],
   "notifications": [

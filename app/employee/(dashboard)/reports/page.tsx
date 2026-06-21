@@ -41,11 +41,13 @@ export default async function EmployeeReportsPage() {
   }).length;
   const dealsWon = notes.filter(n => n.deal_status === "deal_closed").length;
 
-  // Fetch completed tasks count
+  // Fetch completed tasks count directly from DB
   let tasksCompleted = 0;
   try {
-    const { getTasks } = await import("@/lib/supabase/fallback-db");
-    const rawTasks = await getTasks(supabase, session.id);
+    const { data: rawTasks } = await supabase
+      .from("employee_tasks")
+      .select("completed_at")
+      .eq("employee_id", session.id);
     tasksCompleted = (rawTasks || []).filter((t: any) => t.completed_at).length;
   } catch (e) { console.warn("[REPORTS_TASKS]", e); }
 
