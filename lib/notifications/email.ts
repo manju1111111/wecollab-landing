@@ -34,7 +34,7 @@ async function sendEmail(payload: EmailPayload) {
         "Authorization": `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        from: "WeCollab <updates@wecollab.in>",
+        from: process.env.RESEND_FROM_EMAIL || "WeCollab <onboarding@resend.dev>",
         to: payload.to,
         subject: payload.subject,
         html: payload.html
@@ -42,6 +42,9 @@ async function sendEmail(payload: EmailPayload) {
     });
 
     const data = await res.json();
+    if (!res.ok) {
+      console.error("[RESEND_API_ERROR]", data);
+    }
     return { success: res.ok, data };
   } catch (err: any) {
     console.error("[EMAIL_DISPATCH_ERROR]", err);
