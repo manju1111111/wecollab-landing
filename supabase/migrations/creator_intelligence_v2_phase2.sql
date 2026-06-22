@@ -6,7 +6,7 @@
 -- 1. Create Table: creator_enrichment_runs
 CREATE TABLE IF NOT EXISTS public.creator_enrichment_runs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id    UUID NOT NULL REFERENCES public.creators(id) ON DELETE CASCADE,
+  creator_id    UUID REFERENCES public.creators(id) ON DELETE CASCADE,
   trigger_run_id TEXT,
   status        TEXT NOT NULL CHECK (status IN ('pending', 'running', 'success', 'failed')),
   started_at    TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.creator_enrichment_runs (
 -- 2. Create Table: ai_usage_logs
 CREATE TABLE IF NOT EXISTS public.ai_usage_logs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id    UUID NOT NULL REFERENCES public.creators(id) ON DELETE CASCADE,
+  creator_id    UUID REFERENCES public.creators(id) ON DELETE CASCADE,
   run_id        UUID REFERENCES public.creator_enrichment_runs(id) ON DELETE SET NULL,
   model_name    TEXT NOT NULL,
   prompt_type   TEXT NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.ai_usage_logs (
 -- 2.5 Create Table: ai_analysis_outputs
 CREATE TABLE IF NOT EXISTS public.ai_analysis_outputs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  creator_id    UUID NOT NULL REFERENCES public.creators(id) ON DELETE CASCADE,
+  creator_id    UUID REFERENCES public.creators(id) ON DELETE CASCADE,
   run_id        UUID REFERENCES public.creator_enrichment_runs(id) ON DELETE SET NULL,
   agent_name    TEXT NOT NULL,
   prompt_version TEXT NOT NULL,

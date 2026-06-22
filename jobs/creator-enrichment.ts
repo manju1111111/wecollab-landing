@@ -3,6 +3,7 @@ import { client } from "@/lib/trigger";
 import { createClient } from "@supabase/supabase-js";
 import { getScrapeProvider } from "@/lib/scraper-providers";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import masterFilters from "@/data/filters.json";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,12 +43,39 @@ export const creatorEnrichmentJob = client.defineJob({
 
     const runRecordId = runRecord.id;
 
+    const updateProgress = async (stepKey: string, extraMeta: Record<string, any> = {}) => {
+      await io.runTask(`progress-${stepKey}`, async () => {
+        const { data: currentRun } = await supabase
+          .from("creator_enrichment_runs")
+          .select("metadata")
+          .eq("id", runRecordId)
+          .single();
+
+        const currentMeta = currentRun?.metadata || {};
+        const currentSteps = currentMeta.steps || {};
+        currentSteps[stepKey] = true;
+
+        await supabase
+          .from("creator_enrichment_runs")
+          .update({
+            metadata: {
+              ...currentMeta,
+              ...extraMeta,
+              steps: currentSteps
+            }
+          })
+          .eq("id", runRecordId);
+      });
+    };
+
     try {
       // Step 1: Scrape Profile & Timeline Posts
       const scrapedData = await io.runTask("scrape-profile", async () => {
         const scraper = getScrapeProvider(provider);
         return await scraper.scrape(cleanUsername);
       });
+
+      await updateProgress("profile_fetched");
 
       // Step 2: Save Media Nodes
       await io.runTask("save-media-nodes", async () => {
@@ -70,6 +98,9 @@ export const creatorEnrichmentJob = client.defineJob({
           }
         }
       });
+
+      await updateProgress("content_analyzed");
+
 
       // Step 3: Run AI DNA Engines (Content, Personality, Brand Affinity) using Gemini 2.5 Flash
       const aiResults = await io.runTask("run-ai-dna-engines", async () => {
@@ -174,6 +205,89 @@ JSON Schema to follow:
         });
       });
 
+      await updateProgress("categories_assigned");
+      await updateProgress("brand_safety_checked");
+
+      // Step 3.5: Run AI Filter Mapping using Gemini 2.5 Flash
+      const filterMappingResults = await io.runTask("run-ai-filter-mapping", async () => {
+        const prompt = `
+You are WeCollab's Lead AI Creator Categorization Specialist. Compare the creator's profile against our master filter catalog and match all applicable filters.
+
+Creator Profile:
+- Username: @${scrapedData.username}
+- Display Name: ${scrapedData.name || scrapedData.username}
+- Biography: "${scrapedData.bio || ""}"
+- Recent Captions: ${JSON.stringify(scrapedData.captions || [])}
+
+Master Filter Catalog:
+${JSON.stringify(masterFilters)}
+
+Rules:
+1. Output a JSON object with a single key "matches", containing an array of matched filters.
+2. For each match, provide:
+   - "filter_id": the exact ID from the catalog
+   - "confidence": a score between 0.00 and 1.00 indicating match certainty
+   - "reasoning": a concise explanation of why this filter applies based on the bio or captions.
+3. Be strict: only include matches where there is direct evidence in the creator's profile.
+4. Return a RAW JSON object ONLY (no markdown code blocks, no backticks, no wrap text).
+
+JSON Schema to follow:
+{
+  "matches": [
+    {
+      "filter_id": "video_format_face_showing",
+      "confidence": 0.95,
+      "reasoning": "Creator is seen talking directly to the camera in their recent reels."
+    }
+  ]
+}
+`;
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const usage = result.response.usageMetadata || { promptTokenCount: 0, candidatesTokenCount: 0 };
+
+        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const aiOutput = JSON.parse(cleanJson);
+
+        return {
+          output: aiOutput,
+          usage,
+        };
+      });
+
+      const matchedFilters = filterMappingResults.output.matches || [];
+
+      // Log AI Filter Mapping Usage to Database
+      await io.runTask("log-filter-mapping-usage", async () => {
+        await supabase.from("ai_usage_logs").insert({
+          creator_id: creatorId || null,
+          run_id: runRecordId,
+          model_name: "gemini-2.5-flash",
+          prompt_type: "filter_mapping_engine",
+          input_tokens: filterMappingResults.usage.promptTokenCount,
+          output_tokens: filterMappingResults.usage.candidatesTokenCount,
+          pricing_version: "2026-06",
+        });
+      });
+
+      // Log AI Filter Mapping Analysis Output to Database for Audit
+      await io.runTask("log-filter-mapping-output", async () => {
+        const inputSummary = `Username: @${scrapedData.username}, Bio Length: ${scrapedData.bio?.length || 0}, Filters Catalog Size: ${masterFilters.length}`;
+        await supabase.from("ai_analysis_outputs").insert({
+          creator_id: creatorId || null,
+          run_id: runRecordId,
+          agent_name: "filter_mapping_engine",
+          prompt_version: "v2.0",
+          model_name: "gemini-2.5-flash",
+          input_summary: inputSummary,
+          raw_response: filterMappingResults.output,
+        });
+      });
+
+      await updateProgress("filters_assigned");
+
+
       // Step 4: Compute V2 Creator Score
       const followers = scrapedData.followers || 0;
       const postsCount = scrapedData.posts_data ? scrapedData.posts_data.length : 0;
@@ -217,10 +331,29 @@ JSON Schema to follow:
       const scoreVal = (erScore * 0.30) + (viewScore * 0.20) + (80 * 0.15) + (postingScore * 0.15) + (safetyScore * 0.20);
       const creatorScore = Math.round(Math.min(99, Math.max(30, scoreVal))) / 10;
 
+      await updateProgress("score_generated");
+
       // Step 5: Save/Upsert Creator Profile & Sub-records
       const dbResults = await io.runTask("save-to-database", async () => {
-        // 1. Upsert Creators real-time profile details
-        const mainCategory = aiOutput.niches?.value?.[0] || "General";
+        // Filter out any assignments with confidence < 0.75
+        const validAssignments = matchedFilters.filter((f: any) => f.confidence >= 0.75);
+
+        // Map matched filter IDs to filter names and details from filters.json
+        const tagsToAssign = validAssignments.map((f: any) => {
+          const matchedItem = masterFilters.find((item: any) => item.id === f.filter_id);
+          return matchedItem?.name || f.filter_id;
+        });
+
+        // Determine mainCategory dynamically from niches or highest confidence matched filter
+        let mainCategory = aiOutput.niches?.value?.[0] || "General";
+        if (validAssignments.length > 0) {
+          const highestConf = validAssignments.reduce((prev: any, current: any) => (prev.confidence > current.confidence) ? prev : current);
+          const matchedItem = masterFilters.find((item: any) => item.id === highestConf.filter_id);
+          if (matchedItem?.group) {
+            mainCategory = matchedItem.group;
+          }
+        }
+
         const finalLocation = aiOutput.locations?.value?.[0] || "India";
         const emailMatch = scrapedData.bio?.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
         
@@ -235,6 +368,7 @@ JSON Schema to follow:
           engagement_rate: engagementRate,
           avg_reel_views: String(avgViews),
           category: mainCategory,
+          tags: tagsToAssign,
           location: finalLocation,
           gender: aiOutput.gender?.value || null,
           language: aiOutput.languages?.value?.[0] || "English",
@@ -274,6 +408,37 @@ JSON Schema to follow:
           .from("ai_analysis_outputs")
           .update({ creator_id: savedCreator.id })
           .eq("run_id", runRecordId);
+
+        // 1.5. Upsert Filter Assignments to database
+        const assignmentPayloads = validAssignments.map((f: any) => {
+          const matchedItem = masterFilters.find((item: any) => item.id === f.filter_id);
+          return {
+            creator_id: savedCreator.id,
+            run_id: runRecordId,
+            filter_id: f.filter_id,
+            filter_name: matchedItem?.name || f.filter_id,
+            filter_group: matchedItem?.group || "General",
+            confidence: f.confidence,
+            reasoning: f.reasoning,
+          };
+        });
+
+        if (assignmentPayloads.length > 0) {
+          // Delete existing assignments for this creator
+          await supabase
+            .from("creator_filter_assignments")
+            .delete()
+            .eq("creator_id", savedCreator.id);
+
+          // Insert new ones
+          const { error: assignErr } = await supabase
+            .from("creator_filter_assignments")
+            .insert(assignmentPayloads);
+            
+          if (assignErr) {
+            console.error("[PIPELINE_FILTER_ASSIGN_ERROR] Failed to save filter assignments:", assignErr.message);
+          }
+        }
 
         if (!creatorId) {
           if (scrapedData.posts_data && scrapedData.posts_data.length > 0) {
@@ -330,6 +495,7 @@ JSON Schema to follow:
 
         return savedCreator;
       });
+
 
       // Step 6: Generate Multiple Embeddings ('profile', 'content', 'personality')
       await io.runTask("generate-embeddings", async () => {
@@ -424,12 +590,39 @@ Biography Vibe: ${dbResults.bio || ""}
           .eq("id", runRecordId);
       });
 
+      const { data: dbAssignments } = await supabase
+        .from("creator_filter_assignments")
+        .select("*")
+        .eq("run_id", runRecordId);
+
       return {
         success: true,
         creatorId: dbResults.id,
         username: dbResults.username,
-        score: creatorScore
+        name: dbResults.name,
+        bio: dbResults.bio,
+        profile_image: dbResults.profile_image,
+        followers: dbResults.followers,
+        following: dbResults.following,
+        posts: dbResults.posts,
+        engagement_rate: dbResults.engagement_rate,
+        avg_reel_views: dbResults.avg_reel_views,
+        category: dbResults.category,
+        location: dbResults.location,
+        gender: dbResults.gender,
+        language: dbResults.language,
+        brand_safe: dbResults.brand_safe,
+        creator_score: dbResults.creator_score,
+        tags: dbResults.tags,
+        filters: (dbAssignments || []).map((f: any) => ({
+          filter_id: f.filter_id,
+          name: f.filter_name,
+          group: f.filter_group,
+          confidence: parseFloat(f.confidence),
+          reasoning: f.reasoning
+        }))
       };
+
 
     } catch (err: any) {
       console.error("[PIPELINE_RUN_CRITICAL_FAIL]", err);

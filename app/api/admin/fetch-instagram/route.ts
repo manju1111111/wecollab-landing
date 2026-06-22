@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     }
 
     const rapidApiKey = process.env.RAPIDAPI_KEY;
+    console.log("RAPIDAPI_KEY inside API Route:", rapidApiKey ? "EXISTS" : "MISSING");
     if (!rapidApiKey) {
       console.error("[INSTAGRAM_FETCH_ERROR] RAPIDAPI_KEY is missing in environment variables.");
       return NextResponse.json(

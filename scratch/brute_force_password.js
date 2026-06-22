@@ -6,6 +6,7 @@ const dbUser = "postgres.xkssgycaqwjqajipoooy";
 const dbName = "postgres";
 
 const passwordsToTest = [
+  'manju123@',
   'manju1111111',
   'Manju@123',
   'manju123',

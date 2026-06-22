@@ -1,0 +1,500 @@
+[
+  {
+    "id": "video_format_face_showing",
+    "name": "Face-showing (talking head)",
+    "group": "Video Format",
+    "description": "Creator regularly shows their face or speaks directly to the camera."
+  },
+  {
+    "id": "video_format_faceless",
+    "name": "Faceless creator",
+    "group": "Video Format",
+    "description": "Creator does not show their face, using product shots, hands-only, or stock footages."
+  },
+  {
+    "id": "video_format_pov",
+    "name": "POV-style",
+    "group": "Video Format",
+    "description": "First-person point of view camera angle showing actions from creator's perspective."
+  },
+  {
+    "id": "video_format_voiceover",
+    "name": "Voice-over only",
+    "group": "Video Format",
+    "description": "Video with a recorded vocal track explaining or narrating visuals."
+  },
+  {
+    "id": "video_format_screen_recording",
+    "name": "Screen recording",
+    "group": "Video Format",
+    "description": "Captures computer or phone screens, showing software, gaming, or app walks."
+  },
+  {
+    "id": "video_format_animation",
+    "name": "Animation / motion graphics",
+    "group": "Video Format",
+    "description": "Uses drawn, animated, or motion design graphics instead of live footage."
+  },
+  {
+    "id": "video_format_reaction",
+    "name": "Reaction content",
+    "group": "Video Format",
+    "description": "Creator reacts to other videos, articles, memes, or news."
+  },
+  {
+    "id": "video_format_commentary",
+    "name": "Commentary style",
+    "group": "Video Format",
+    "description": "Opinionated discussions, video essays, or spoken reviews about trends or topics."
+  },
+  {
+    "id": "video_format_vlog",
+    "name": "Vlog (daily life cam)",
+    "group": "Video Format",
+    "description": "Casual, daily life, docu-style captures of creator's activities."
+  },
+  {
+    "id": "video_format_cinematic",
+    "name": "Cinematic / film style",
+    "group": "Video Format",
+    "description": "High production value, artistic lighting, color grading, and camera work."
+  },
+  {
+    "id": "video_format_live_streaming",
+    "name": "Live streaming",
+    "group": "Video Format",
+    "description": "Real-time broadcasts or broadcasts recorded live from Instagram/Twitch/YT."
+  },
+  {
+    "id": "video_format_short_form",
+    "name": "Short-form (Reels/Shorts/TikTok)",
+    "group": "Video Format",
+    "description": "Short, snappy vertical videos under 60-90 seconds."
+  },
+  {
+    "id": "hair_natural",
+    "name": "Natural hair",
+    "group": "Hair",
+    "description": "Focuses on wearing hair in its organic, un-straightened state."
+  },
+  {
+    "id": "hair_curly",
+    "name": "Curly hair (3A–4C)",
+    "group": "Hair",
+    "description": "Covers curls, coils, kinks, and textures ranging from type 3A to 4C."
+  },
+  {
+    "id": "hair_growth",
+    "name": "Hair growth & scalp health",
+    "group": "Hair",
+    "description": "Tips, products, and regimens for improving thickness, length, and scalp nutrition."
+  },
+  {
+    "id": "hair_coloring",
+    "name": "Hair coloring & dyeing",
+    "group": "Hair",
+    "description": "Showcases bleaches, dyes, temporary pigments, highlights, and home coloring tutorials."
+  },
+  {
+    "id": "hair_braids",
+    "name": "Braids & protective styles",
+    "group": "Hair",
+    "description": "Showcases cornrows, box braids, twists, and other protective hairstyles."
+  },
+  {
+    "id": "hair_wigs",
+    "name": "Wigs & extensions",
+    "group": "Hair",
+    "description": "Includes wig installs, clip-in extensions, weave tutorials, and styling."
+  },
+  {
+    "id": "hair_mens_grooming",
+    "name": "Men's hair & grooming",
+    "group": "Hair",
+    "description": "Beard maintenance, fades, trims, and male hair care tips."
+  },
+  {
+    "id": "beauty_skincare_routine",
+    "name": "Skincare routine",
+    "group": "Skin & Beauty",
+    "description": "Daily regimens, layering steps, and morning/night skincare applications."
+  },
+  {
+    "id": "beauty_acne_care",
+    "name": "Acne & blemish care",
+    "group": "Skin & Beauty",
+    "description": "Addressing breakouts, acne scars, blackheads, and skin recovery."
+  },
+  {
+    "id": "beauty_anti_aging",
+    "name": "Anti-aging & serums",
+    "group": "Skin & Beauty",
+    "description": "Focuses on wrinkles, fine lines, collagen, and anti-aging skincare products."
+  },
+  {
+    "id": "beauty_sun_care",
+    "name": "Sun care & SPF",
+    "group": "Skin & Beauty",
+    "description": "Sunscreen recommendations, sun safety, and UV protection reviews."
+  },
+  {
+    "id": "beauty_clean_beauty",
+    "name": "Natural / clean beauty",
+    "group": "Skin & Beauty",
+    "description": "Organic, non-toxic, eco-friendly, and chemical-free cosmetics and skincare."
+  },
+  {
+    "id": "beauty_fragrance",
+    "name": "Fragrance & perfume",
+    "group": "Skin & Beauty",
+    "description": "Perfume, cologne, and body scent reviews, notes, and collections."
+  },
+  {
+    "id": "beauty_nail_art",
+    "name": "Nail art & care",
+    "group": "Skin & Beauty",
+    "description": "Manicures, pedicures, nail polish art designs, and nail health tips."
+  },
+  {
+    "id": "beauty_makeup_tutorials",
+    "name": "Makeup tutorials",
+    "group": "Skin & Beauty",
+    "description": "Cosmetic application guides, eye shadow looks, contouring, and bridal makeup."
+  },
+  {
+    "id": "beauty_grwm",
+    "name": "GRWM (get ready with me)",
+    "group": "Skin & Beauty",
+    "description": "Get Ready With Me videos showing daily makeup, hair, and styling routines."
+  },
+  {
+    "id": "beauty_makeup_reviews",
+    "name": "Makeup reviews",
+    "group": "Skin & Beauty",
+    "description": "Swatches, wear tests, and honest assessments of beauty and cosmetics products."
+  },
+  {
+    "id": "beauty_drugstore",
+    "name": "Drugstore beauty",
+    "group": "Skin & Beauty",
+    "description": "Affordable, budget-friendly makeup and skincare finds."
+  },
+  {
+    "id": "beauty_luxury",
+    "name": "Luxury beauty",
+    "group": "Skin & Beauty",
+    "description": "High-end, designer brand cosmetics and premium skincare lines."
+  },
+  {
+    "id": "unboxing_tech",
+    "name": "Tech unboxing",
+    "group": "Unboxing & Reviews",
+    "description": "Opening boxes of new gadgets, phones, laptops, and setup gear."
+  },
+  {
+    "id": "unboxing_beauty",
+    "name": "Beauty / skincare unboxing",
+    "group": "Unboxing & Reviews",
+    "description": "Opening PR packages, beauty hauls, and cosmetic deliveries."
+  },
+  {
+    "id": "unboxing_fashion",
+    "name": "Fashion haul unboxing",
+    "group": "Unboxing & Reviews",
+    "description": "Opening clothing packages and trying on new apparel buys."
+  },
+  {
+    "id": "unboxing_amazon_finds",
+    "name": "Amazon finds",
+    "group": "Unboxing & Reviews",
+    "description": "Reviewing and unboxing interesting items purchased from Amazon."
+  },
+  {
+    "id": "unboxing_honest_reviews",
+    "name": "Honest product reviews",
+    "group": "Unboxing & Reviews",
+    "description": "Unbiased, detailed reviews and critiques of goods and services."
+  },
+  {
+    "id": "fashion_ootd",
+    "name": "Outfit of the day (OOTD)",
+    "group": "Fashion & Style",
+    "description": "Outfit of the day posts highlighting fashion choices and stylings."
+  },
+  {
+    "id": "fashion_thrift",
+    "name": "Thrift & secondhand fashion",
+    "group": "Fashion & Style",
+    "description": "Thrift shopping, vintage hauls, and sustainable pre-owned clothing wear."
+  },
+  {
+    "id": "fashion_luxury",
+    "name": "Luxury & designer fashion",
+    "group": "Fashion & Style",
+    "description": "High-fashion, designer wear, couture, and premium style pieces."
+  },
+  {
+    "id": "fashion_budget",
+    "name": "Budget / affordable fashion",
+    "group": "Fashion & Style",
+    "description": "Inexpensive, value-oriented style hacks and shopping deals."
+  },
+  {
+    "id": "fashion_streetwear",
+    "name": "Streetwear",
+    "group": "Fashion & Style",
+    "description": "Casual apparel inspired by global skate, surf, hip-hop, and urban culture."
+  },
+  {
+    "id": "fashion_sustainable",
+    "name": "Sustainable fashion",
+    "group": "Fashion & Style",
+    "description": "Eco-friendly materials, slow fashion advocacy, and ethical clothing brands."
+  },
+  {
+    "id": "fashion_mens",
+    "name": "Men's fashion",
+    "group": "Fashion & Style",
+    "description": "Menswear style guides, suits, casual styling, and accessories."
+  },
+  {
+    "id": "food_recipes",
+    "name": "Recipe tutorials",
+    "group": "Food & Beverage",
+    "description": "Step-by-step guides showing how to cook or bake dishes."
+  },
+  {
+    "id": "food_restaurants",
+    "name": "Restaurant reviews",
+    "group": "Food & Beverage",
+    "description": "Reviewing dining spots, menus, food quality, and cafe experiences."
+  },
+  {
+    "id": "food_mukbang",
+    "name": "Food mukbang",
+    "group": "Food & Beverage",
+    "description": "Eating large quantities of food while interacting with the audience."
+  },
+  {
+    "id": "food_baking",
+    "name": "Baking & pastry",
+    "group": "Food & Beverage",
+    "description": "Focuses on bread, cakes, cookies, pastries, and baking techniques."
+  },
+  {
+    "id": "food_vegan",
+    "name": "Vegan / plant-based",
+    "group": "Food & Beverage",
+    "description": "Vegan, vegetarian, and dairy-free recipes and lifestyle items."
+  },
+  {
+    "id": "food_coffee_culture",
+    "name": "Coffee & café culture",
+    "group": "Food & Beverage",
+    "description": "Espresso brewing, latte art, cafe aesthetics, and tea reviews."
+  },
+  {
+    "id": "food_cocktails",
+    "name": "Cocktails & mixology",
+    "group": "Food & Beverage",
+    "description": "Making alcoholic and non-alcoholic drinks, cocktail recipes, and bar setups."
+  },
+  {
+    "id": "wellness_mental_health",
+    "name": "Mental health awareness",
+    "group": "Health & Wellness",
+    "description": "Anxiety, depression, self-care, therapy tips, and mental well-being advocacy."
+  },
+  {
+    "id": "wellness_mindfulness",
+    "name": "Meditation & mindfulness",
+    "group": "Health & Wellness",
+    "description": "Mindful living, breathing exercises, and meditation guides."
+  },
+  {
+    "id": "wellness_supplements",
+    "name": "Supplements & vitamins",
+    "group": "Health & Wellness",
+    "description": "Reviews of protein powders, vitamins, and pre-workouts."
+  },
+  {
+    "id": "fitness_home_workouts",
+    "name": "Home workouts",
+    "group": "Fitness",
+    "description": "No-equipment workouts, resistance bands, and training at home."
+  },
+  {
+    "id": "fitness_gym",
+    "name": "Gym training",
+    "group": "Fitness",
+    "description": "Weight training, machines, gym routines, and weightlifting splits."
+  },
+  {
+    "id": "fitness_bodybuilding",
+    "name": "Bodybuilding & physique",
+    "group": "Fitness",
+    "description": "Muscle gain, conditioning, posing, and physique transformations."
+  },
+  {
+    "id": "fitness_yoga",
+    "name": "Yoga & pilates",
+    "group": "Fitness",
+    "description": "Yoga flows, pilates, core strengthening, and flexibility guides."
+  },
+  {
+    "id": "fitness_running",
+    "name": "Running & endurance",
+    "group": "Fitness",
+    "description": "Marathons, running advice, jogging, and cardiovascular training."
+  },
+  {
+    "id": "tech_reviews",
+    "name": "Smartphone reviews",
+    "group": "Tech & Gadgets",
+    "description": "Evaluating mobile phones, laptops, and major consumer electronics."
+  },
+  {
+    "id": "tech_ai_tools",
+    "name": "AI tools & software",
+    "group": "Tech & Gadgets",
+    "description": "Reviewing artificial intelligence tools, SaaS apps, and useful websites."
+  },
+  {
+    "id": "gaming_walkthroughs",
+    "name": "Game walkthroughs",
+    "group": "Gaming & Entertainment",
+    "description": "Guides, secrets, and gameplay playthroughs of video games."
+  },
+  {
+    "id": "gaming_lets_play",
+    "name": "Let's play",
+    "group": "Gaming & Entertainment",
+    "description": "Casual, commentary-driven gaming videos of creator playing games."
+  },
+  {
+    "id": "gaming_reviews",
+    "name": "Game reviews",
+    "group": "Gaming & Entertainment",
+    "description": "Reviewing and scoring newly released video games."
+  },
+  {
+    "id": "lifestyle_daily",
+    "name": "Productive day in my life",
+    "group": "Lifestyle & Daily Life",
+    "description": "Daily vlogs showing productivity, work, study, and daily routines."
+  },
+  {
+    "id": "lifestyle_morning_routine",
+    "name": "Morning routine",
+    "group": "Lifestyle & Daily Life",
+    "description": "Morning habits, routines, coffee, exercise, and getting ready for the day."
+  },
+  {
+    "id": "home_decor",
+    "name": "Home decor & interior design",
+    "group": "Home & Living",
+    "description": "Aesthetics, furniture arrangement, styling, and design themes."
+  },
+  {
+    "id": "home_diy",
+    "name": "DIY & home improvement",
+    "group": "Home & Living",
+    "description": "Do-it-yourself crafts, painting walls, builds, and room upgrades."
+  },
+  {
+    "id": "parenting_baby_care",
+    "name": "Newborn & baby care",
+    "group": "Parenting & Family",
+    "description": "Breastfeeding, sleep training, baby products, and infant parenting advice."
+  },
+  {
+    "id": "parenting_toddler",
+    "name": "Toddler parenting",
+    "group": "Parenting & Family",
+    "description": "Toddler behaviors, meals, activities, and toddler parenting tips."
+  },
+  {
+    "id": "travel_budget",
+    "name": "Budget travel",
+    "group": "Travel & Outdoors",
+    "description": "Cheap flights, hostels, backpacking, and affordable destinations."
+  },
+  {
+    "id": "travel_luxury",
+    "name": "Luxury travel",
+    "group": "Travel & Outdoors",
+    "description": "Five-star resorts, business class travel, and luxury experiences."
+  },
+  {
+    "id": "finance_personal",
+    "name": "Personal finance & budgeting",
+    "group": "Finance & Business",
+    "description": "Saving money, budgeting apps, credit cards, and basic financial tips."
+  },
+  {
+    "id": "finance_investing",
+    "name": "Investing (stocks, ETFs)",
+    "group": "Finance & Business",
+    "description": "Stock market, exchange traded funds, indexing, and investment portfolios."
+  },
+  {
+    "id": "education_study_tips",
+    "name": "Study tips & productivity",
+    "group": "Education & Learning",
+    "description": "Note-taking, exam preparation, focus hacks, and studying vlog methods."
+  },
+  {
+    "id": "education_coding",
+    "name": "Coding & programming",
+    "group": "Education & Learning",
+    "description": "Web development, python, computer science, and software engineering advice."
+  },
+  {
+    "id": "arts_illustration",
+    "name": "Illustration & drawing",
+    "group": "Arts & Creativity",
+    "description": "Sketching, anime drawing, character design, and illustration tutorials."
+  },
+  {
+    "id": "arts_painting",
+    "name": "Painting (watercolor, oil, acrylic)",
+    "group": "Arts & Creativity",
+    "description": "Traditional painting techniques, canvas work, and painting tutorials."
+  },
+  {
+    "id": "pets_dog_training",
+    "name": "Dog care & training",
+    "group": "Pets & Animals",
+    "description": "Dog behavioral training, food reviews, and dog care tips."
+  },
+  {
+    "id": "spirituality_astrology",
+    "name": "Astrology & birth charts",
+    "group": "Spirituality & Mindfulness",
+    "description": "Horoscopes, zodiac signs, and birth chart readings."
+  },
+  {
+    "id": "advocacy_body_positivity",
+    "name": "Body positivity & self-love",
+    "group": "Social Causes & Advocacy",
+    "description": "Plus-size representation, self-acceptance, and positive body image content."
+  },
+  {
+    "id": "sports_cricket",
+    "name": "Cricket",
+    "group": "Sports",
+    "description": "Cricket matches, batting/bowling tips, IPL, and team reviews."
+  },
+  {
+    "id": "sports_soccer",
+    "name": "Soccer",
+    "group": "Sports",
+    "description": "Football/soccer matches, FIFA, leagues, and training drills."
+  },
+  {
+    "id": "sports_formula_1",
+    "name": "Formula 1",
+    "group": "Sports",
+    "description": "F1 races, drivers, teams, and motorsport discussions."
+  }
+]
