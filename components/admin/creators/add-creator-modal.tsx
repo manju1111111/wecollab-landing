@@ -22,6 +22,7 @@ export function AddCreatorModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [isManualMode, setIsManualMode] = useState(false);
 
   // Input state
   const [usernameInput, setUsernameInput] = useState("");
@@ -85,6 +86,8 @@ export function AddCreatorModal({
   useEffect(() => {
     if (creator) {
       setStep("review");
+      setIsManualMode(false);
+      setShowOverrideDetails(true);
       setFullName(creator.name || "");
       setUsernameInput(creator.username || "");
       setBioText(creator.bio || "");
@@ -110,6 +113,8 @@ export function AddCreatorModal({
       }
     } else {
       setStep("input");
+      setIsManualMode(false);
+      setShowOverrideDetails(false);
       setUsernameInput("");
       setFullName("");
       setBioText("");
@@ -308,11 +313,22 @@ export function AddCreatorModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const cleanUsername = cleanInstagramInput(usernameInput);
+    if (!cleanUsername) {
+      alert("Instagram username is required.");
+      return;
+    }
+    if (!fullName.trim()) {
+      alert("Full Name is required.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const submitData = {
       name: fullName,
-      username: cleanInstagramInput(usernameInput),
+      username: cleanUsername,
       bio: bioText,
       profile_image: profileImageCdnUrl || avatarPreviewUrl,
       followers_count: followersCount,
@@ -355,16 +371,28 @@ export function AddCreatorModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${isManualMode ? 'max-w-3xl' : 'max-w-2xl'} max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-[18px] font-bold text-slate-900">
-              {creator ? "Edit Creator Profile" : step === "review" ? "Review AI Creator Analysis" : "Add Creator (AI-First)"}
+              {creator 
+                ? "Edit Creator Profile" 
+                : isManualMode 
+                  ? "Add Creator Manually" 
+                  : step === "review" 
+                    ? "Review AI Creator Analysis" 
+                    : "Add Creator (AI-First)"}
             </h2>
             <p className="text-[13px] text-slate-500 font-medium mt-0.5">
-              {creator ? "Update creator details." : step === "review" ? "Confirm classifications and make manual updates." : "AI analyzes profile details and sets filters automatically."}
+              {creator 
+                ? "Update creator details." 
+                : isManualMode 
+                  ? "Enter creator details manually." 
+                  : step === "review" 
+                    ? "Confirm classifications and make manual updates." 
+                    : "AI analyzes profile details and sets filters automatically."}
             </p>
           </div>
           <button type="button" onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
@@ -426,6 +454,20 @@ export function AddCreatorModal({
                     <Sparkles className="h-4 w-4 fill-indigo-200" />
                     <span>Fetch & Analyze Creator</span>
                   </button>
+
+                  <div className="flex items-center justify-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManualMode(true);
+                        setStep("review");
+                        setShowOverrideDetails(true);
+                      }}
+                      className="text-[13px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+                    >
+                      Or, add creator details manually
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -471,284 +513,760 @@ export function AddCreatorModal({
               </motion.div>
             )}
 
-            {/* STEP 4 & 5: AI Review Screen */}
+            {/* STEP 4 & 5: AI Review Screen or Manual Add Form */}
             {step === "review" && (
-              <motion.div 
-                key="review-step"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-6"
-              >
-                {/* Profile Card Summary */}
-                <div className="flex gap-5 p-5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm items-start">
-                  <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0">
-                    <CreatorAvatar src={avatarPreviewUrl} name={fullName} className="h-20 w-20" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-[17px] font-extrabold text-slate-900 truncate">{fullName || `@${usernameInput}`}</h3>
-                      <div className="flex items-center gap-1.5 shrink-0 bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold">
-                        <Sparkles className="h-3.5 w-3.5 fill-indigo-200" />
-                        <span>Score: {creatorScore.toFixed(1)}/10</span>
-                      </div>
-                    </div>
-                    <p className="text-[12.5px] font-semibold text-indigo-600">@{usernameInput}</p>
-                    {bioText && <p className="text-[12px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{bioText}</p>}
-                  </div>
-                </div>
-
-                {/* Primary proposal fields summary */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Followers</p>
-                    <p className="text-[14px] font-black text-slate-900 mt-0.5">
-                      {followersCount ? parseInt(followersCount).toLocaleString() : "—"}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Engagement</p>
-                    <p className="text-[14px] font-black text-slate-900 mt-0.5">{engagementRate ? `${engagementRate}%` : "—"}</p>
-                  </div>
-                  <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Category</p>
-                    <p className="text-[14px] font-black text-slate-900 mt-0.5 truncate">{selectedCategory || "General"}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-[13px] font-semibold bg-white p-4 rounded-xl border border-slate-100">
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-400">Proposed Gender:</span>
-                    <span className="text-slate-800">{genderInput || "Unspecified"}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-slate-400">Proposed Language:</span>
-                    <span className="text-slate-800">{languageInput || "English"}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-400">Proposed Location:</span>
-                    <span className="text-slate-800 truncate max-w-[160px]">{locationInput || "Unspecified"}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-400">Brand Safety:</span>
-                    <span className={`font-bold ${brandSafeInput ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {brandSafeInput ? "Brand Safe" : "Risky"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* AI Mapped Filters with Reasoning Tooltips */}
-                {aiFilters.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-[11.5px] font-bold text-slate-400 uppercase tracking-wider block">AI Assigned Filters ({aiFilters.length})</label>
-                    <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200/60 rounded-xl max-h-[140px] overflow-y-auto custom-scrollbar">
-                      {aiFilters.map(f => (
-                        <div 
-                          key={f.filter_id} 
-                          className="relative group cursor-help inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 text-slate-700 text-[12px] font-semibold rounded-lg shadow-sm hover:border-indigo-300 hover:bg-indigo-50/20 transition-all"
-                        >
-                          <span className="text-slate-800 font-bold">{f.name}</span>
-                          <span className="text-[10px] text-indigo-500 font-extrabold bg-indigo-50 px-1 py-0.5 rounded">
-                            {Math.round(f.confidence * 100)}%
-                          </span>
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveFilter(f.filter_id)} 
-                            className="text-slate-300 hover:text-red-500 ml-0.5 transition-colors font-bold text-[11px]"
+              isManualMode ? (
+                <div className="space-y-8 animate-in fade-in duration-200">
+                  {/* Basic Info and Avatar */}
+                  <div className="flex gap-6">
+                    {/* Avatar Upload (Mock/Preview) */}
+                    <div className="w-24 shrink-0 flex flex-col items-center gap-2">
+                      {avatarPreviewUrl ? (
+                        <div className="relative h-24 w-24 rounded-full overflow-hidden border-2 border-indigo-500">
+                          <img src={avatarPreviewUrl} alt="Avatar" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAvatarPreviewUrl("");
+                              setProfileImageCdnUrl("");
+                            }}
+                            className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity text-[11px] font-bold"
                           >
-                            ×
+                            Remove
                           </button>
-                          
-                          {/* Reasoning Hover Tooltip */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-[11px] rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 leading-relaxed font-normal">
-                            <p className="font-extrabold text-indigo-300 mb-1">AI Reasoning ({Math.round(f.confidence * 100)}% confidence):</p>
-                            {f.reasoning}
-                          </div>
                         </div>
-                      ))}
+                      ) : (
+                        <div 
+                          onClick={() => {
+                            const url = prompt("Enter profile image URL:");
+                            if (url) {
+                              setAvatarPreviewUrl(url);
+                              setProfileImageCdnUrl(url);
+                            }
+                          }}
+                          className="h-24 w-24 rounded-full border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:bg-indigo-50 transition-colors cursor-pointer group"
+                        >
+                          <Upload className="h-5 w-5 group-hover:text-indigo-500 mb-1" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider group-hover:text-indigo-600">Upload URL</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
 
-                {/* Manual Override Fields (collapsible) */}
-                <div className="border border-slate-100 rounded-2xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setShowOverrideDetails(!showOverrideDetails)}
-                    className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-[13px] font-bold text-slate-700"
-                  >
-                    <span>Manual Profile Overrides & Categorization</span>
-                    {showOverrideDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
-
-                  {showOverrideDetails && (
-                    <div className="p-5 border-t border-slate-100 space-y-4 bg-white animate-in slide-in-from-top-1 duration-200">
-                      
+                    {/* Basic Info */}
+                    <div className="flex-1 space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Full Name Override</label>
+                          <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Full Name *</label>
                           <input 
+                            required 
                             type="text" 
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500" 
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                            placeholder="e.g. Jane Doe" 
                           />
                         </div>
                         <div>
-                          <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Email</label>
-                          <input 
-                            type="email" 
-                            value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500" 
-                          />
+                          <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Username *</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">@</span>
+                            <input 
+                              required 
+                              type="text" 
+                              value={usernameInput}
+                              onChange={(e) => setUsernameInput(e.target.value)}
+                              className="w-full pl-7 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                              placeholder="janedoe" 
+                            />
+                          </div>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Location</label>
-                          <input 
-                            type="text" 
-                            value={locationInput}
-                            onChange={(e) => setLocationInput(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500" 
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Pricing ($ / post)</label>
-                          <input 
-                            type="number" 
-                            value={pricingInput}
-                            onChange={(e) => setPricingInput(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500" 
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Assign Employee</label>
-                          <select
-                            value={assignedEmployee}
-                            onChange={e => setAssignedEmployee(e.target.value)}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500"
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[12px] font-bold text-slate-700 block">Bio / Description</label>
+                          <button 
+                            type="button" 
+                            onClick={async () => {
+                              const cleanUsername = cleanInstagramInput(usernameInput);
+                              if (!cleanUsername) {
+                                alert("Please enter an Instagram username or profile URL first.");
+                                return;
+                              }
+                              setIsManualMode(false);
+                              handleAnalyzeCreator();
+                            }}
+                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded-full"
                           >
-                            <option value="">— Unassigned —</option>
-                            {employeesList.filter(e => e.status === 'active' || e.status === 'invited').map(emp => (
-                              <option key={emp.id} value={emp.id}>
-                                {emp.full_name} ({emp.role})
-                              </option>
-                            ))}
-                          </select>
+                            <Sparkles className="h-3 w-3" /> Auto-categorize
+                          </button>
                         </div>
+                        <textarea 
+                          value={bioText}
+                          onChange={(e) => setBioText(e.target.value)}
+                          rows={3} 
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none font-medium" 
+                          placeholder="Paste their Instagram bio here..." 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metrics & Location */}
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="col-span-3 pb-2 border-b border-slate-100">
+                      <h3 className="text-[14px] font-bold text-slate-900">Metrics & Location</h3>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Followers</label>
+                      <input 
+                        type="number" 
+                        value={followersCount}
+                        onChange={(e) => setFollowersCount(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="e.g. 150000" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Avg Views</label>
+                      <input 
+                        type="number" 
+                        value={avgViews}
+                        onChange={(e) => setAvgViews(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="e.g. 45000" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Engagement Rate (%)</label>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value={engagementRate}
+                        onChange={(e) => setEngagementRate(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="e.g. 3.5" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Location</label>
+                      <input 
+                        type="text" 
+                        value={locationInput}
+                        onChange={(e) => setLocationInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="City, Country" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Language</label>
+                      <input 
+                        type="text" 
+                        value={languageInput}
+                        onChange={(e) => setLanguageInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="e.g. English" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Gender</label>
+                      <select 
+                        value={genderInput}
+                        onChange={(e) => setGenderInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="">Select...</option>
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Taxonomy Filters Selection */}
+                  <div className="space-y-4">
+                    <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="text-[14px] font-bold text-slate-900">Taxonomy Filters</h3>
+                      <select 
+                        value={selectedCategory} 
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="text-[12px] bg-slate-50 border border-slate-200 rounded px-2 py-1 font-bold outline-none"
+                      >
+                        <option value="">Set primary category...</option>
+                        {CREATOR_CATEGORIES.map(c => (
+                          <option key={c.groupName} value={c.groupName}>{c.groupName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                        placeholder="Type keyword to filter master subcategories..."
+                      />
+                    </div>
+
+                    <div className="border border-slate-100 rounded-xl overflow-hidden flex h-[180px] bg-slate-50/20">
+                      <div className="w-1/3 border-r border-slate-200 overflow-y-auto bg-slate-50/50 p-2 space-y-0.5 scrollbar-thin">
+                        {CREATOR_CATEGORIES.map(group => (
+                          <button
+                            type="button"
+                            key={group.groupName}
+                            onClick={() => setActiveGroup(group.groupName)}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11.5px] font-bold transition-all ${
+                              activeGroup === group.groupName 
+                                ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' 
+                                : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span className="truncate">{group.groupName}</span>
+                          </button>
+                        ))}
                       </div>
 
-                      {/* Manual taxonomic filter selection */}
-                      <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                          <label className="text-[11.5px] font-bold text-slate-700 uppercase tracking-wider block">Add Taxonomy Filters</label>
-                          <select 
-                            value={selectedCategory} 
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="text-[12px] bg-slate-50 border border-slate-200 rounded px-2 py-1 font-bold outline-none"
-                          >
-                            <option value="">Set primary category...</option>
-                            {CREATOR_CATEGORIES.map(c => (
-                              <option key={c.groupName} value={c.groupName}>{c.groupName}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Search Sub-categories */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
-                          <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 focus:bg-white transition-all"
-                            placeholder="Type keyword to filter master subcategories..."
-                          />
-                        </div>
-
-                        {/* Sidebar taxonomic selector panel */}
-                        <div className="border border-slate-100 rounded-xl overflow-hidden flex h-[180px] bg-slate-50/20">
-                          <div className="w-1/3 border-r border-slate-200 overflow-y-auto bg-slate-50/50 p-2 space-y-0.5 scrollbar-thin">
-                            {CREATOR_CATEGORIES.map(group => (
+                      <div className="flex-1 overflow-y-auto p-3 scrollbar-thin bg-white">
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeGroupSubcategories.map(sub => {
+                            const isSelected = selectedTags.includes(sub);
+                            return (
                               <button
                                 type="button"
-                                key={group.groupName}
-                                onClick={() => setActiveGroup(group.groupName)}
-                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11.5px] font-bold transition-all ${
-                                  activeGroup === group.groupName 
-                                    ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' 
-                                    : 'text-slate-600 hover:bg-slate-100'
+                                key={sub}
+                                onClick={() => handleToggleTag(sub, activeGroup)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold border transition-all ${
+                                  isSelected 
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                 }`}
                               >
-                                <span className="truncate">{group.groupName}</span>
+                                {isSelected && <Check className="h-3 w-3" />}
+                                {sub}
                               </button>
-                            ))}
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedTags.length > 0 && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Selected tags</label>
+                        <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200/60 rounded-xl max-h-[85px] overflow-y-auto custom-scrollbar">
+                          {selectedTags.map(tag => (
+                            <span 
+                              key={tag} 
+                              className="inline-flex items-center gap-1 bg-white border border-slate-200 text-slate-700 text-[11.5px] font-bold px-2 py-0.5 rounded-lg shadow-sm"
+                            >
+                              {tag}
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setSelectedTags(prev => prev.filter(t => t !== tag));
+                                }} 
+                                className="text-slate-400 hover:text-red-500 ml-0.5"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Business & Contact */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="col-span-2 pb-2 border-b border-slate-100">
+                      <h3 className="text-[14px] font-bold text-slate-900">Business & Contact</h3>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Email</label>
+                      <input 
+                        type="email" 
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="collab@creator.com" 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Pricing / Post ($)</label>
+                      <input 
+                        type="number" 
+                        value={pricingInput}
+                        onChange={(e) => setPricingInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[14px] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium" 
+                        placeholder="e.g. 1500" 
+                      />
+                    </div>
+
+                    <div className="col-span-2 flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={hasManagerInput}
+                          onChange={(e) => setHasManagerInput(e.target.checked)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 h-4 w-4" 
+                        />
+                        <span className="text-[13px] font-semibold text-slate-700">Has Manager</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={verifiedInput}
+                          onChange={(e) => setVerifiedInput(e.target.checked)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 h-4 w-4" 
+                        />
+                        <span className="text-[13px] font-semibold text-slate-700">Verified</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={brandSafeInput}
+                          onChange={(e) => setBrandSafeInput(e.target.checked)}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 h-4 w-4" 
+                        />
+                        <span className="text-[13px] font-semibold text-slate-700">Brand Safe</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Assign to Employee */}
+                  <div className="pt-2">
+                    <label className="text-[13px] font-bold text-slate-700 mb-1.5 block">Assign to Employee</label>
+                    <p className="text-[11px] text-slate-400 mb-2">This creator will appear in the selected employee's workspace.</p>
+                    <select
+                      value={assignedEmployee}
+                      onChange={e => setAssignedEmployee(e.target.value)}
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none font-medium"
+                    >
+                      <option value="">— Unassigned —</option>
+                      {employeesList.filter(e => e.status === 'active' || e.status === 'invited').map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.full_name} ({emp.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <motion.div 
+                  key="review-step"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-6"
+                >
+                  {/* Profile Card Summary */}
+                  <div className="flex gap-5 p-5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm items-start">
+                    <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-indigo-500 shrink-0">
+                      <CreatorAvatar src={avatarPreviewUrl} name={fullName} className="h-20 w-20" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-[17px] font-extrabold text-slate-900 truncate">{fullName || `@${usernameInput}`}</h3>
+                        <div className="flex items-center gap-1.5 shrink-0 bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold">
+                          <Sparkles className="h-3.5 w-3.5 fill-indigo-200" />
+                          <span>Score: {creatorScore.toFixed(1)}/10</span>
+                        </div>
+                      </div>
+                      <p className="text-[12.5px] font-semibold text-indigo-600">@{usernameInput}</p>
+                      {bioText && <p className="text-[12px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{bioText}</p>}
+                    </div>
+                  </div>
+
+                  {/* Primary proposal fields summary */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Followers</p>
+                      <p className="text-[14px] font-black text-slate-900 mt-0.5">
+                        {followersCount ? parseInt(followersCount).toLocaleString() : "—"}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Engagement</p>
+                      <p className="text-[14px] font-black text-slate-900 mt-0.5">{engagementRate ? `${engagementRate}%` : "—"}</p>
+                    </div>
+                    <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 text-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Category</p>
+                      <p className="text-[14px] font-black text-slate-900 mt-0.5 truncate">{selectedCategory || "General"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-[13px] font-semibold bg-white p-4 rounded-xl border border-slate-100">
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-slate-400">{(isManualMode || creator) ? "Gender" : "Proposed Gender"}:</span>
+                      <span className="text-slate-800">{genderInput || "Unspecified"}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-50 pb-2">
+                      <span className="text-slate-400">{(isManualMode || creator) ? "Language" : "Proposed Language"}:</span>
+                      <span className="text-slate-800">{languageInput || "English"}</span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                      <span className="text-slate-400">{(isManualMode || creator) ? "Location" : "Proposed Location"}:</span>
+                      <span className="text-slate-800 truncate max-w-[160px]">{locationInput || "Unspecified"}</span>
+                    </div>
+                    <div className="flex justify-between pt-1">
+                      <span className="text-slate-400">Brand Safety:</span>
+                      <span className={`font-bold ${brandSafeInput ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {brandSafeInput ? "Brand Safe" : "Risky"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* AI Mapped Filters with Reasoning Tooltips */}
+                  {aiFilters.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-[11.5px] font-bold text-slate-400 uppercase tracking-wider block">AI Assigned Filters ({aiFilters.length})</label>
+                      <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200/60 rounded-xl max-h-[140px] overflow-y-auto custom-scrollbar">
+                        {aiFilters.map(f => (
+                          <div 
+                            key={f.filter_id} 
+                            className="relative group cursor-help inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 text-slate-700 text-[12px] font-semibold rounded-lg shadow-sm hover:border-indigo-300 hover:bg-indigo-50/20 transition-all"
+                          >
+                            <span className="text-slate-800 font-bold">{f.name}</span>
+                            <span className="text-[10px] text-indigo-500 font-extrabold bg-indigo-50 px-1 py-0.5 rounded">
+                              {Math.round(f.confidence * 100)}%
+                            </span>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveFilter(f.filter_id)} 
+                              className="text-slate-300 hover:text-red-500 ml-0.5 transition-colors font-bold text-[11px]"
+                            >
+                              ×
+                            </button>
+                            
+                            {/* Reasoning Hover Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 text-white text-[11px] rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 leading-relaxed font-normal">
+                              <p className="font-extrabold text-indigo-300 mb-1">AI Reasoning ({Math.round(f.confidence * 100)}% confidence):</p>
+                              {f.reasoning}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Override Fields (collapsible) */}
+                  <div className="border border-slate-100 rounded-2xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowOverrideDetails(!showOverrideDetails)}
+                      className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-[13px] font-bold text-slate-700"
+                    >
+                      <span>Manual Profile Overrides & Categorization</span>
+                      {showOverrideDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+
+                    {showOverrideDetails && (
+                      <div className="p-5 border-t border-slate-100 space-y-4 bg-white animate-in slide-in-from-top-1 duration-200">
+                        
+                        {/* Section 1: Basic Information */}
+                        <div className="pb-2 border-b border-slate-100">
+                          <h4 className="text-[12px] font-bold text-slate-800 uppercase tracking-wider">Basic Information</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Instagram Username *</label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">@</span>
+                              <input 
+                                type="text" 
+                                value={usernameInput}
+                                onChange={(e) => setUsernameInput(e.target.value)}
+                                placeholder="janedoe"
+                                required
+                                className="w-full pl-7 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Full Name *</label>
+                            <input 
+                              type="text" 
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              placeholder="Jane Doe"
+                              required
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                          
+                          <div className="col-span-2">
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Bio / Description</label>
+                            <textarea 
+                              value={bioText}
+                              onChange={(e) => setBioText(e.target.value)}
+                              placeholder="Instagram Bio..."
+                              rows={3}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 resize-none font-medium" 
+                            />
                           </div>
 
-                          <div className="flex-1 overflow-y-auto p-3 scrollbar-thin bg-white">
-                            <div className="flex flex-wrap gap-1.5">
-                              {activeGroupSubcategories.map(sub => {
-                                const isSelected = selectedTags.includes(sub);
-                                return (
-                                  <button
-                                    type="button"
-                                    key={sub}
-                                    onClick={() => handleToggleTag(sub, activeGroup)}
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold border transition-all ${
-                                      isSelected 
-                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
-                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                                    }`}
-                                  >
-                                    {isSelected && <Check className="h-3 w-3" />}
-                                    {sub}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                          <div className="col-span-2">
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Profile Image URL</label>
+                            <input 
+                              type="text" 
+                              value={profileImageCdnUrl || avatarPreviewUrl}
+                              onChange={(e) => {
+                                setAvatarPreviewUrl(e.target.value);
+                                setProfileImageCdnUrl(e.target.value);
+                              }}
+                              placeholder="https://example.com/image.jpg"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
                           </div>
                         </div>
 
-                        {/* Checkbox settings */}
-                        <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                        {/* Section 2: Metrics & Business */}
+                        <div className="pb-2 border-b border-slate-100 pt-2">
+                          <h4 className="text-[12px] font-bold text-slate-800 uppercase tracking-wider">Metrics & Business</h4>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Followers</label>
                             <input 
-                              type="checkbox" 
-                              checked={hasManagerInput}
-                              onChange={(e) => setHasManagerInput(e.target.checked)}
-                              className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              type="number" 
+                              value={followersCount}
+                              onChange={(e) => setFollowersCount(e.target.value)}
+                              placeholder="e.g. 150000"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
                             />
-                            <span className="text-[12.5px] font-bold text-slate-700">Has Manager</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Avg Views</label>
                             <input 
-                              type="checkbox" 
-                              checked={verifiedInput}
-                              onChange={(e) => setVerifiedInput(e.target.checked)}
-                              className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              type="number" 
+                              value={avgViews}
+                              onChange={(e) => setAvgViews(e.target.value)}
+                              placeholder="e.g. 45000"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
                             />
-                            <span className="text-[12.5px] font-bold text-slate-700">Verified</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Engagement Rate (%)</label>
                             <input 
-                              type="checkbox" 
-                              checked={brandSafeInput}
-                              onChange={(e) => setBrandSafeInput(e.target.checked)}
-                              className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              type="number" 
+                              step="0.01"
+                              value={engagementRate}
+                              onChange={(e) => setEngagementRate(e.target.value)}
+                              placeholder="e.g. 3.5"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
                             />
-                            <span className="text-[12.5px] font-bold text-slate-700">Brand Safe Override</span>
-                          </label>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Email</label>
+                            <input 
+                              type="email" 
+                              value={emailInput}
+                              onChange={(e) => setEmailInput(e.target.value)}
+                              placeholder="collab@creator.com"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Pricing ($ / post)</label>
+                            <input 
+                              type="number" 
+                              value={pricingInput}
+                              onChange={(e) => setPricingInput(e.target.value)}
+                              placeholder="e.g. 1500"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Section 3: Attributes & Assignment */}
+                        <div className="pb-2 border-b border-slate-100 pt-2">
+                          <h4 className="text-[12px] font-bold text-slate-800 uppercase tracking-wider">Attributes & Assignment</h4>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Location</label>
+                            <input 
+                              type="text" 
+                              value={locationInput}
+                              onChange={(e) => setLocationInput(e.target.value)}
+                              placeholder="City, Country"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Language</label>
+                            <input 
+                              type="text" 
+                              value={languageInput}
+                              onChange={(e) => setLanguageInput(e.target.value)}
+                              placeholder="e.g. English"
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Gender</label>
+                            <select 
+                              value={genderInput}
+                              onChange={(e) => setGenderInput(e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium"
+                            >
+                              <option value="">Select...</option>
+                              <option value="Female">Female</option>
+                              <option value="Male">Male</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Assign Employee</label>
+                            <select
+                              value={assignedEmployee}
+                              onChange={e => setAssignedEmployee(e.target.value)}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium"
+                            >
+                              <option value="">— Unassigned —</option>
+                              {employeesList.filter(e => e.status === 'active' || e.status === 'invited').map(emp => (
+                                <option key={emp.id} value={emp.id}>
+                                  {emp.full_name} ({emp.role})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[11.5px] font-bold text-slate-700 mb-1.5 block">Creator Score</label>
+                            <input 
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={creatorScore}
+                              onChange={(e) => setCreatorScore(parseFloat(e.target.value) || 5.0)}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 font-medium" 
+                            />
+                          </div>
+                        </div>
+
+                        {/* Manual taxonomic filter selection */}
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                            <label className="text-[11.5px] font-bold text-slate-700 uppercase tracking-wider block">Add Taxonomy Filters</label>
+                            <select 
+                              value={selectedCategory} 
+                              onChange={(e) => setSelectedCategory(e.target.value)}
+                              className="text-[12px] bg-slate-50 border border-slate-200 rounded px-2 py-1 font-bold outline-none"
+                            >
+                              <option value="">Set primary category...</option>
+                              {CREATOR_CATEGORIES.map(c => (
+                                <option key={c.groupName} value={c.groupName}>{c.groupName}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Search Sub-categories */}
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                              placeholder="Type keyword to filter master subcategories..."
+                            />
+                          </div>
+
+                          {/* Sidebar taxonomic selector panel */}
+                          <div className="border border-slate-100 rounded-xl overflow-hidden flex h-[180px] bg-slate-50/20">
+                            <div className="w-1/3 border-r border-slate-200 overflow-y-auto bg-slate-50/50 p-2 space-y-0.5 scrollbar-thin">
+                              {CREATOR_CATEGORIES.map(group => (
+                                <button
+                                  type="button"
+                                  key={group.groupName}
+                                  onClick={() => setActiveGroup(group.groupName)}
+                                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-[11.5px] font-bold transition-all ${
+                                    activeGroup === group.groupName 
+                                      ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' 
+                                      : 'text-slate-600 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span className="truncate">{group.groupName}</span>
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-3 scrollbar-thin bg-white">
+                              <div className="flex flex-wrap gap-1.5">
+                                {activeGroupSubcategories.map(sub => {
+                                  const isSelected = selectedTags.includes(sub);
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={sub}
+                                      onClick={() => handleToggleTag(sub, activeGroup)}
+                                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold border transition-all ${
+                                        isSelected 
+                                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' 
+                                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      {isSelected && <Check className="h-3 w-3" />}
+                                      {sub}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Checkbox settings */}
+                          <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={hasManagerInput}
+                                onChange={(e) => setHasManagerInput(e.target.checked)}
+                                className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              />
+                              <span className="text-[12.5px] font-bold text-slate-700">Has Manager</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={verifiedInput}
+                                onChange={(e) => setVerifiedInput(e.target.checked)}
+                                className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              />
+                              <span className="text-[12.5px] font-bold text-slate-700">Verified</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={brandSafeInput}
+                                onChange={(e) => setBrandSafeInput(e.target.checked)}
+                                className="rounded border-slate-300 text-indigo-600 h-4 w-4" 
+                              />
+                              <span className="text-[12.5px] font-bold text-slate-700">Brand Safe Override</span>
+                            </label>
+                          </div>
+
                         </div>
 
                       </div>
-
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              )
             )}
 
           </AnimatePresence>
