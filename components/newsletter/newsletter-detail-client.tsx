@@ -545,7 +545,7 @@ export function NewsletterDetailClient({
               <ul className="space-y-4">
                 {latestPosts.map((trendPost, tIdx) => (
                   <li key={trendPost.id}>
-                    <Link href={`/newsletter/${trendPost.id}`} className="flex gap-3 group hover:text-purple-600 transition">
+                    <Link href={`/blog/${trendPost.slug || trendPost.id}`} className="flex gap-3 group hover:text-purple-600 transition">
                       <span className="text-lg font-black text-slate-250 dark:text-slate-800 group-hover:text-purple-400 transition leading-none shrink-0 w-5">0{tIdx + 1}</span>
                       <div className="min-w-0">
                         <span className="text-[9px] font-bold text-slate-400 dark:text-slate-555 uppercase tracking-wider block">{trendPost.category}</span>
@@ -602,7 +602,7 @@ export function NewsletterDetailClient({
             {relatedPosts.map((rPost) => (
               <Link 
                 key={rPost.id}
-                href={`/newsletter/${rPost.id}`}
+                href={`/blog/${rPost.slug || rPost.id}`}
                 className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-[24px] overflow-hidden hover:shadow-lg hover:border-purple-100/50 dark:hover:border-purple-900/40 hover:-translate-y-1 transition-all duration-300 flex flex-col h-full"
               >
                 {rPost.cover_image && (
@@ -643,7 +643,7 @@ export function NewsletterDetailClient({
           <div className="flex flex-col sm:flex-row items-stretch gap-4">
             {prevPost ? (
               <Link
-                href={`/newsletter/${prevPost.id}`}
+                href={`/blog/${prevPost.slug || prevPost.id}`}
                 className="group flex-1 flex items-start gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-purple-100 hover:bg-purple-50/10 transition-all text-left"
               >
                 <div className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-purple-600 group-hover:border-purple-350 dark:group-hover:text-purple-400 transition-colors shrink-0">
@@ -660,7 +660,7 @@ export function NewsletterDetailClient({
 
             {nextPost ? (
               <Link
-                href={`/newsletter/${nextPost.id}`}
+                href={`/blog/${nextPost.slug || nextPost.id}`}
                 className="group flex-1 flex items-start gap-4 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-purple-100 hover:bg-purple-50/10 transition-all text-right flex-row-reverse"
               >
                 <div className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-purple-600 group-hover:border-purple-350 dark:group-hover:text-purple-400 transition-colors shrink-0">

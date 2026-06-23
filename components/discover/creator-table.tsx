@@ -4,6 +4,7 @@ import { Creator } from "@/data/mock-creators";
 import { Info, ArrowDown, ArrowUp, CheckCircle2, Check, Sparkles } from "lucide-react";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { sanitizeImageSrc, getInitials, resolveCreatorImage } from "@/lib/avatar-utils";
+import Image from "next/image";
 
 // ─── CreatorAvatar ────────────────────────────────────────────────────────────
 function CreatorAvatar({ src, name, className = "h-11 w-11" }: { src?: string; name: string; className?: string }) {
@@ -43,14 +44,14 @@ function CreatorAvatar({ src, name, className = "h-11 w-11" }: { src?: string; n
   }
 
   return (
-    <img
+    <Image
       src={loadedSrc}
       alt={`${name} profile photo`}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
+      fill
+      sizes="44px"
+      unoptimized
       onError={() => setError(true)}
-      className="object-cover h-full w-full"
+      className="object-cover"
     />
   );
 }

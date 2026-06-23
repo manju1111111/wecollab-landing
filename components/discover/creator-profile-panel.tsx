@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, MapPin, CheckCircle2, Heart, Eye, Activity, ExternalLink, BarChart3, TrendingUp } from "lucide-react";
 import { Creator } from "@/data/mock-creators";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 import { sanitizeImageSrc, getInitials, resolveCreatorImage } from "@/lib/avatar-utils";
 
@@ -134,7 +135,7 @@ const RecentPostsGallery = ({ category }: { category: string }) => {
     <div className="grid grid-cols-3 gap-1.5">
       {pool.map((src, i) => (
         <div key={src + i} className="group/post relative aspect-square overflow-hidden rounded-xl bg-slate-100 shadow-sm border border-slate-150">
-          <img src={src} alt="Recent post" className="h-full w-full object-cover transition duration-300 group-hover/post:scale-105" loading="lazy" referrerPolicy="no-referrer" />
+          <Image src={src} alt="Recent post" fill sizes="150px" unoptimized className="object-cover transition duration-300 group-hover/post:scale-105" />
           <div className="absolute inset-0 bg-slate-950/45 opacity-0 group-hover/post:opacity-100 transition-opacity flex flex-col items-center justify-center text-[10px] font-black text-white gap-1 select-none pointer-events-none">
             <span className="flex items-center gap-1">❤️ {Math.floor(25 + Math.random() * 40)}k</span>
             <span className="flex items-center gap-1">💬 {Math.floor(100 + Math.random() * 300)}</span>
@@ -220,14 +221,14 @@ function CreatorAvatarPanel({ src, name, className = "h-24 w-24" }: { src?: stri
   }
 
   return (
-    <img
+    <Image
       src={loadedSrc}
       alt={`${name} profile photo`}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
+      fill
+      sizes="96px"
+      unoptimized
       onError={() => setError(true)}
-      className={`${className} rounded-full object-cover`}
+      className="object-cover rounded-full"
     />
   );
 }

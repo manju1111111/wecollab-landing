@@ -4,7 +4,7 @@ import { NewsletterDetailClient } from "@/components/newsletter/newsletter-detai
 import { Navbar } from "@/components/landing/navbar";
 import { Footer } from "@/components/landing/footer";
 import { MOCK_NEWSLETTERS } from "@/data/mock-newsletters";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const seoTitle = post.seo_title || post.title;
   const seoDesc = post.seo_description || post.summary;
-  const url = `https://wecollab.co/newsletter/${post.id}`;
+  const url = `https://www.wecollab.in/blog/${post.slug || post.id}`;
 
   return {
     title: `${seoTitle} | WeCollab Brief`,
@@ -66,6 +66,10 @@ export default async function NewsletterDetailPage({ params }: PageProps) {
 
   if (!post) {
     notFound();
+  }
+
+  if (post.slug) {
+    permanentRedirect(`/blog/${post.slug}`);
   }
 
   // 2. Fetch list to build navigation indexes & related posts

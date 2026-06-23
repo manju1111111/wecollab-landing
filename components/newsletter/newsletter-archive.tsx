@@ -360,7 +360,7 @@ export function NewsletterArchive({ initialNewsletters }: NewsletterArchiveProps
               className="group flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-violet-200/15"
             >
               {/* Graphic Card Cover */}
-              <Link href={`/newsletter/${post.id}`} className="relative block h-40 overflow-hidden shrink-0">
+              <Link href={`/blog/${post.slug || post.id}`} className="relative block h-40 overflow-hidden shrink-0">
                 {post.cover_image ? (
                   <img
                     src={post.cover_image}
@@ -386,7 +386,7 @@ export function NewsletterArchive({ initialNewsletters }: NewsletterArchiveProps
               {/* Body */}
               <div className="flex flex-1 flex-col p-5">
                 <h3 className="text-[1.05rem] font-bold text-slate-900 leading-snug group-hover:text-violet-600 transition-colors line-clamp-2">
-                  <Link href={`/newsletter/${post.id}`}>{post.title}</Link>
+                  <Link href={`/blog/${post.slug || post.id}`}>{post.title}</Link>
                 </h3>
                 
                 <p className="mt-2 text-[0.875rem] leading-relaxed text-slate-500 line-clamp-2 flex-1">

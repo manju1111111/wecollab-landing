@@ -429,6 +429,20 @@ export async function getNewsletterById(supabase: any, id: string) {
   }
 }
 
+export async function getNewsletterBySlug(supabase: any, slug: string) {
+  try {
+    const { data, error } = await supabase.from("newsletters").select("*").eq("slug", slug).single();
+    if (error && (error.code === 'PGRST205' || error.message.includes('schema cache'))) {
+      throw error;
+    }
+    return data;
+  } catch (e) {
+    const db = readFallback();
+    const list = db.newsletters || [];
+    return list.find((n: any) => n.slug === slug || n.id === slug) || null;
+  }
+}
+
 export async function insertNewsletter(supabase: any, newsletter: any) {
   const newNewsletter = {
     id: newsletter.id || crypto.randomUUID(),
