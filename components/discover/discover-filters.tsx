@@ -104,6 +104,7 @@ export function DiscoverFilters({
   setActivePlanId?: (id: string | null) => void;
 }) {
   const [isAllFiltersOpen, setIsAllFiltersOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const activeFilters = useMemo(() => {
     const list: { key: string; label: string; value: string; onClear: () => void }[] = [];
@@ -177,17 +178,10 @@ export function DiscoverFilters({
     setFilters({ ...filters, subCategories: newSubCats });
   };
 
-  const removeSubCat = (subCat: string) => {
-    setFilters({
-      ...filters,
-      subCategories: filters.subCategories.filter((c) => c !== subCat),
-    });
-  };
-
   return (
     <div className="flex flex-col border-b border-slate-200 bg-white relative z-30">
-      {/* Top Filter Row */}
-      <div className="flex h-16 flex-wrap items-center justify-between px-6">
+      {/* Desktop Filter Row */}
+      <div className="hidden md:flex h-16 flex-wrap items-center justify-between px-6">
         <div className="flex flex-wrap items-center gap-3">
           
           {/* Active Blueprint Focus Selector */}
@@ -255,7 +249,7 @@ export function DiscoverFilters({
           <div className="ml-2 flex items-center gap-2">
             <button
               onClick={() => setIsAllFiltersOpen(true)}
-              className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-slate-900"
+              className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
             >
               <SlidersHorizontal className="h-4 w-4" />
               All Filters
@@ -272,7 +266,7 @@ export function DiscoverFilters({
           <span className="text-[13px] font-medium text-slate-600">In My Creators</span>
           <button
             onClick={() => setFilters({ ...filters, hasContact: !filters.hasContact })}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
               filters.hasContact ? "bg-primary" : "bg-slate-200"
             }`}
           >
@@ -285,6 +279,207 @@ export function DiscoverFilters({
         </div>
       </div>
 
+      {/* Mobile Filters Row */}
+      <div className="flex md:hidden h-14 items-center justify-between px-4 border-b border-slate-200">
+        <button
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+        >
+          <SlidersHorizontal className="h-4 w-4 text-slate-500" />
+          Filters
+          {activeFilters.length > 0 && (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-650 text-[10px] font-bold bg-indigo-600 text-white">
+              {activeFilters.length}
+            </span>
+          )}
+        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Native Sort Selector */}
+          <select
+            value="Followers (High to Low)"
+            onChange={() => {}}
+            className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer"
+          >
+            <option value="Followers (High to Low)">Sort: Followers</option>
+            <option value="Followers (Low to High)">Sort: Followers (Low)</option>
+            <option value="Engagement Rate">Sort: Engagement</option>
+            <option value="Score">Sort: Score</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileDrawerOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileDrawerOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer Slide-out */}
+      <div
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-xl transition-transform duration-300 md:hidden ${
+          isMobileDrawerOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900">Filters</h2>
+            {activeFilters.length > 0 && (
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-650 text-[10px] font-bold bg-indigo-600 text-white">
+                {activeFilters.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setIsMobileDrawerOpen(false)}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Filters Content */}
+        <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+          {/* Active Blueprint Focus Selector */}
+          {setActivePlanId && plans.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Blueprint Plan Focus</label>
+              <select
+                value={activePlanId || ""}
+                onChange={(e) => setActivePlanId(e.target.value ? e.target.value : null)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="">🎯 Lock Active Plan Focus</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    Focus: {p.name} ({p.brand})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Platform */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Platform</label>
+            <select
+              value={filters.platform}
+              onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="All Platforms">All Platforms</option>
+              <option value="Instagram">Instagram</option>
+              <option value="YouTube">YouTube</option>
+              <option value="X">X</option>
+              <option value="TikTok">TikTok</option>
+            </select>
+          </div>
+
+          {/* Location */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Location</label>
+            <select
+              value={filters.location}
+              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="All">All Locations</option>
+              <option value="India">India</option>
+              <option value="USA">USA</option>
+              <option value="UK">UK</option>
+              <option value="Canada">Canada</option>
+              <option value="Australia">Australia</option>
+            </select>
+          </div>
+
+          {/* Gender */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gender</label>
+            <select
+              value={filters.gender}
+              onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="All">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Non-binary">Non-binary</option>
+            </select>
+          </div>
+
+          {/* Followers */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Followers Size</label>
+            <select
+              value={filters.followers}
+              onChange={(e) => setFilters({ ...filters, followers: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="all">All Sizes</option>
+              <option value="10k - 50k">10k - 50k</option>
+              <option value="50k - 100k">50k - 100k</option>
+              <option value="100k - 500k">100k - 500k</option>
+              <option value="500k+">500k+</option>
+            </select>
+          </div>
+
+          {/* Niche Category Trigger */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Niche / Categories</label>
+            <button
+              onClick={() => {
+                setIsAllFiltersOpen(true);
+              }}
+              className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 font-semibold text-left hover:bg-slate-100 cursor-pointer"
+            >
+              <span>{filters.subCategories.length > 0 ? `${filters.subCategories.length} Selected` : "Select Sub-categories"}</span>
+              <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+            </button>
+          </div>
+
+          {/* In My Creators Toggle */}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-slate-700">In My Creators</span>
+              <span className="text-xs text-slate-400 font-medium">Show only creators in your list</span>
+            </div>
+            <button
+              onClick={() => setFilters({ ...filters, hasContact: !filters.hasContact })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                filters.hasContact ? "bg-primary" : "bg-slate-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform shadow-sm ${
+                  filters.hasContact ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 bg-slate-50 p-4 flex gap-2">
+          {activeFilters.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="flex-1 py-3 text-sm font-bold text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 text-center cursor-pointer"
+            >
+              Clear All
+            </button>
+          )}
+          <button
+            onClick={() => setIsMobileDrawerOpen(false)}
+            className="flex-1 py-3 text-sm font-bold text-white bg-slate-900 rounded-xl hover:bg-slate-800 text-center cursor-pointer"
+          >
+            Apply Filters
+          </button>
+        </div>
+      </div>
+
       {/* Active Dismissible Filter Chips Row */}
       <AnimatePresence>
         {activeFilters.length > 0 && (
@@ -292,7 +487,7 @@ export function DiscoverFilters({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex flex-wrap items-center gap-2 bg-slate-50/60 px-6 py-3 border-b border-slate-200/50 shadow-inner"
+            className="flex flex-wrap items-center gap-2 bg-slate-50/60 px-4 md:px-6 py-3 border-b border-slate-200/50 shadow-inner"
           >
             <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider mr-1">Active Filters:</span>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -329,13 +524,13 @@ export function DiscoverFilters({
         )}
       </AnimatePresence>
 
-      {/* Sort Row */}
-      <div className="flex h-12 items-center justify-end px-6">
+      {/* Sort Row (Desktop-only, handled inside Mobile Drawer for mobile) */}
+      <div className="hidden md:flex h-12 items-center justify-end px-6">
         <FilterDropdown
           label="Sort By"
           value="Followers (High to Low)"
           options={["Followers (High to Low)", "Followers (Low to High)", "Engagement Rate", "Score"]}
-          onChange={() => {}} // Sorting state handled via table headers ideally, but we can hook this up later if needed.
+          onChange={() => {}}
         />
       </div>
 

@@ -339,22 +339,22 @@ export default function DiscoverPage() {
         />
 
         {selectedIds.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 rounded-full bg-slate-900 px-6 py-3 shadow-xl ring-1 ring-slate-800 animate-in slide-in-from-bottom-5">
-            <span className="text-sm font-semibold text-white">
-              {selectedIds.length} creator{selectedIds.length > 1 ? "s" : ""} selected
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-4 rounded-full bg-slate-900 px-4 py-2.5 sm:px-6 sm:py-3 shadow-xl ring-1 ring-slate-800 animate-in slide-in-from-bottom-5 w-auto max-w-[90vw] sm:max-w-none whitespace-nowrap">
+            <span className="text-[12px] sm:text-sm font-semibold text-white">
+              {selectedIds.length} select
             </span>
             <div className="h-4 w-px bg-slate-700" />
             <button
               onClick={() => setSelectedIds([])}
-              className="text-sm font-medium text-slate-400 hover:text-white"
+              className="text-[12px] sm:text-sm font-medium text-slate-400 hover:text-white cursor-pointer"
             >
               Clear
             </button>
             <button
               onClick={() => setIsSaveModalOpen(true)}
-              className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover transition"
+              className="rounded-full bg-primary px-3 py-1 sm:px-4 sm:py-1.5 text-[12px] sm:text-sm font-semibold text-white hover:bg-primary-hover transition cursor-pointer"
             >
-              Add to Plan 👉
+              Add to Plan
             </button>
           </div>
         )}

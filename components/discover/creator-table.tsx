@@ -117,7 +117,7 @@ function RowSaveButton({ creator, plans }: { creator: Creator; plans: any[] }) {
           setIsOpen(!isOpen);
         }}
         disabled={isSaving}
-        className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-[12px] flex items-center gap-1 transition shadow-sm cursor-pointer"
+        className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold px-4 py-2.5 md:px-3 md:py-1.5 rounded-lg text-[12px] flex items-center gap-1 transition shadow-sm cursor-pointer min-h-[40px] md:min-h-0"
       >
         {isSaving ? "Saving..." : "+ Save"}
       </button>

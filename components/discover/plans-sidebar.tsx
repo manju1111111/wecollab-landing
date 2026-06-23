@@ -12,7 +12,7 @@ export function PlansSidebar({
   const router = useRouter();
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-l border-slate-200 bg-[#fafafa] overflow-y-auto">
+    <aside className="hidden xl:flex h-full w-72 shrink-0 flex-col border-l border-slate-200 bg-[#fafafa] overflow-y-auto">
       <div className="p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[15px] font-bold text-slate-900">All Plans</h2>

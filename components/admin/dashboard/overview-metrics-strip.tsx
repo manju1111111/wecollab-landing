@@ -37,7 +37,7 @@ export function OverviewMetricsStrip({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 w-full">
       {metrics.map((m, i) => (
         <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between h-36 relative overflow-hidden group hover:border-indigo-100 transition-colors">
           <div className="min-w-0">

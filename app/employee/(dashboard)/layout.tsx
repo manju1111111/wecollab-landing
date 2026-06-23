@@ -10,6 +10,7 @@ import { SidebarLinks } from "@/components/employee/sidebar-links";
 import { SidebarProfileCard } from "@/components/employee/sidebar-profile-card";
 import { HeaderBreadcrumbs } from "@/components/employee/header-breadcrumbs";
 import { verifySession } from "@/lib/supabase/session-crypto";
+import { EmployeeMobileDrawer } from "@/components/employee/mobile-drawer";
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -52,12 +53,19 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   const initials = (session.full_name || session.role || "E")
     .split(" ").filter(Boolean).map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
 
+  const logoutAction = async () => {
+    "use server";
+    const { cookies } = await import("next/headers");
+    (await cookies()).delete("employee_session");
+    redirect("/employee/login");
+  };
+
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden text-slate-900 font-sans">
       <ActivityTracker employeeId={session.id} />
 
       {/* ── Sidebar ── */}
-      <aside className="w-[240px] bg-white border-r border-slate-200/60 flex flex-col shrink-0 relative z-20">
+      <aside className="hidden md:flex w-[240px] bg-white border-r border-slate-200/60 flex flex-col shrink-0 relative z-20">
 
         {/* Logo */}
         <div className="h-14 flex items-center px-5 border-b border-slate-100 shrink-0">
@@ -92,12 +100,7 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
               Settings
             </Link>
 
-            <form action={async () => {
-              "use server";
-              const { cookies } = await import("next/headers");
-              (await cookies()).delete("employee_session");
-              redirect("/employee/login");
-            }}>
+            <form action={logoutAction}>
               <button 
                 type="submit" 
                 className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50/50 font-bold transition-all text-[12px] cursor-pointer text-left"
@@ -121,8 +124,11 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
 
       {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <header className="h-14 bg-white border-b border-slate-200/80 flex items-center justify-between px-6 shrink-0">
-          <HeaderBreadcrumbs />
+        <header className="h-14 bg-white border-b border-slate-200/80 flex items-center justify-between px-4 sm:px-6 shrink-0 gap-3">
+          <div className="flex items-center gap-2">
+            <EmployeeMobileDrawer initials={initials} name={session.full_name || "Employee"} role={session.role || "Team Member"} logoutAction={logoutAction} />
+            <HeaderBreadcrumbs />
+          </div>
           <div className="flex items-center gap-3">
             <NotificationBell userId={session.id} userType="employee" />
             <div className="h-7 w-7 rounded-full bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-[11px] border border-purple-100">
@@ -131,13 +137,12 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto py-5 px-6">
+        <div className="flex-1 overflow-auto py-3 px-4 sm:py-5 sm:px-6">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
         </div>
       </main>
-
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { LayoutDashboard, Award, Settings, LogOut, HeartHandshake, FileText } fr
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { verifySession } from "@/lib/supabase/session-crypto";
+import { BrandMobileDrawer } from "@/components/brand/mobile-drawer";
 
 const BRAND_NAV_ITEMS = [
   { href: "/brand",           label: "Overview Dashboard", icon: LayoutDashboard },
@@ -51,11 +52,18 @@ export default async function BrandLayout({ children }: { children: React.ReactN
     .join("")
     .toUpperCase();
 
+  const logoutAction = async () => {
+    "use server";
+    const { cookies } = await import("next/headers");
+    (await cookies()).delete("brand_session");
+    redirect("/brand/login");
+  };
+
   return (
     <div className="flex h-screen w-full bg-slate-900 overflow-hidden text-slate-200 font-sans">
       
       {/* Sidebar navigation */}
-      <aside className="w-[260px] bg-slate-950/60 border-r border-slate-800/80 flex flex-col shrink-0 relative z-20 backdrop-blur-xl">
+      <aside className="hidden md:flex w-[260px] bg-slate-950/60 border-r border-slate-800/80 flex flex-col shrink-0 relative z-20 backdrop-blur-xl">
         {/* Brand logo header */}
         <div className="h-[72px] flex items-center px-6 border-b border-slate-800/60 shrink-0 gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-base shadow-sm">
@@ -96,13 +104,8 @@ export default async function BrandLayout({ children }: { children: React.ReactN
             </div>
           </div>
 
-          <form action={async () => {
-            "use server";
-            const { cookies } = await import("next/headers");
-            (await cookies()).delete("brand_session");
-            redirect("/brand/login");
-          }}>
-            <button type="submit" className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 font-bold transition text-[12px]">
+          <form action={logoutAction}>
+            <button type="submit" className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-slate-500 hover:text-rose-400 hover:bg-rose-500/5 font-bold transition text-[12px] cursor-pointer">
               <LogOut className="h-4.5 w-4.5 shrink-0 text-slate-500 hover:text-rose-400" strokeWidth={2} />
               Disconnect
             </button>
@@ -114,27 +117,23 @@ export default async function BrandLayout({ children }: { children: React.ReactN
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
         
         {/* Navbar */}
-        <header className="h-[72px] bg-slate-950/20 border-b border-slate-800/60 flex items-center justify-between px-8 shrink-0">
+        <header className="h-[72px] bg-slate-950/20 border-b border-slate-800/60 flex items-center justify-between px-4 md:px-8 shrink-0">
           <div className="flex items-center gap-2 text-[12px] font-bold text-slate-400">
-            <span>Client Workspace</span>
-            <span className="text-slate-700">/</span>
+            <BrandMobileDrawer brandName={brandName} initials={initials} logoutAction={logoutAction} />
+            <span className="hidden sm:inline">Client Workspace</span>
+            <span className="hidden sm:inline text-slate-700">/</span>
             <span className="text-slate-200">Overview</span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Live Notifications bell */}
             <NotificationBell userId={session.id} userType="admin" />
             
-            <button className="text-slate-400 hover:text-white transition">
+            <button className="text-slate-400 hover:text-white transition cursor-pointer">
               <Settings className="h-4.5 w-4.5" />
             </button>
 
-            <form action={async () => {
-              "use server";
-              const { cookies } = await import("next/headers");
-              (await cookies()).delete("brand_session");
-              redirect("/brand/login");
-            }}>
+            <form action={logoutAction}>
               <button type="submit" className="text-slate-400 hover:text-rose-400 transition flex items-center justify-center cursor-pointer" title="Sign Out">
                 <LogOut className="h-4.5 w-4.5" />
               </button>
@@ -147,7 +146,7 @@ export default async function BrandLayout({ children }: { children: React.ReactN
         </header>
 
         {/* Page contents */}
-        <div className="flex-1 overflow-auto p-8 bg-slate-950/20">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 bg-slate-950/20">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>

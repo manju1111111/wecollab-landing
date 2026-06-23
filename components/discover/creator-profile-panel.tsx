@@ -40,7 +40,7 @@ const RadarChart = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-2 sm:gap-4">
       <div className="w-[120px] h-[120px] relative shrink-0">
         <svg className="w-full h-full" viewBox="0 0 160 160">
           <polygon points={getPoints(1.0)} fill="transparent" stroke="#e2e8f0" strokeWidth="1" />
@@ -80,6 +80,7 @@ const RadarChart = () => {
     </div>
   );
 };
+
 
 // ─── RecentPostsGallery Component ─────────────────────────────────────────────
 const RecentPostsGallery = ({ category }: { category: string }) => {
@@ -267,7 +268,7 @@ const WecollabScoreMeter = ({ score, er, followers }: { score: number; er: numbe
   const strokeDashoffset = 2 * Math.PI * 40 - (normalizedScore / 10) * 2 * Math.PI * 40;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-6">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-3 sm:gap-6">
       <div className="relative h-20 w-20 flex items-center justify-center shrink-0">
         <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" strokeWidth="8" />
@@ -535,16 +536,16 @@ export function CreatorProfilePanel({
             {/* Estimated Rates Brief */}
             <div className="mt-6 px-6">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Estimated Pricing Brief</h3>
-              <div className="bg-white rounded-2xl border border-slate-205 p-4 shadow-sm grid grid-cols-3 gap-3 text-center">
-                <div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-0 text-center">
+                <div className="pb-3 sm:pb-0">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Story</span>
                   <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).story.toLocaleString()}</span>
                 </div>
-                <div className="border-l border-slate-100">
+                <div className="border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 pl-0 sm:pl-3 pb-3 sm:pb-0">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Post</span>
                   <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).post.toLocaleString()}</span>
                 </div>
-                <div className="border-l border-slate-100">
+                <div className="border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 pl-0 sm:pl-3">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Instagram Reel</span>
                   <span className="text-xs font-extrabold text-slate-800">₹{getEstimatedRates(creator.totalFollowers, creator.engagementRate, creator.category).reel.toLocaleString()}</span>
                 </div>

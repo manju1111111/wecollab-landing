@@ -39,3 +39,15 @@ body {
   background: rgba(124, 58, 237, 0.18);
   color: #0f172a;
 }
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+body {
+  overflow-x: hidden;
+}
