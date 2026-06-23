@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { UserPlus, Users, UserCog, Search, MoreHorizontal, CheckCircle2, XCircle, Clock, KeyRound, Eye, EyeOff, X } from "lucide-react";
+import { UserPlus, Users, UserCog, Search, MoreHorizontal, CheckCircle2, XCircle, Clock, KeyRound, Eye, EyeOff, X, Trash2, AlertTriangle, AlertCircle } from "lucide-react";
 import { AddEmployeeModal } from "@/components/admin/dashboard/add-employee-modal";
 import { toggleEmployeeStatus, adminResetEmployeePassword } from "@/app/employee/actions";
+import { useAdminProfile } from "@/components/admin/layout/admin-profile-context";
 
 interface Employee {
   id: string;
@@ -167,14 +168,120 @@ function ResetPasswordModal({
   );
 }
 
+// ── Delete Employee Modal ───────────────────────────────────────────
+function DeleteEmployeeModal({
+  employee,
+  onClose,
+  onConfirm,
+  isDeleting,
+}: {
+  employee: Employee;
+  onClose: () => void;
+  onConfirm: () => void;
+  isDeleting: boolean;
+}) {
+  const hasLinkedRecords = employee.assigned_count > 0 || employee.tasks_completed > 0;
+  const [confirmed, setConfirmed] = useState(!hasLinkedRecords);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-rose-50 flex items-center justify-center">
+              <Trash2 className="h-4.5 w-4.5 text-rose-655 text-rose-600" />
+            </div>
+            <div>
+              <p className="text-[14px] font-bold text-slate-900">Delete Employee</p>
+              <p className="text-[12px] text-slate-400">{employee.full_name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} disabled={isDeleting} className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 flex flex-col gap-4">
+          <p className="text-[13px] text-slate-600 leading-relaxed">
+            Are you sure you want to delete this employee? This action cannot be undone.
+          </p>
+
+          {hasLinkedRecords && (
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-[12px] font-bold text-amber-800">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                Active Assignments Detected
+              </div>
+              <ul className="list-disc pl-5 text-[11px] font-medium text-amber-700 space-y-1">
+                {employee.assigned_count > 0 && (
+                  <li>This employee is currently assigned to <strong className="font-semibold">{employee.assigned_count}</strong> creator(s).</li>
+                )}
+                {employee.tasks_completed > 0 && (
+                  <li>This employee has completed <strong className="font-semibold">{employee.tasks_completed}</strong> task(s).</li>
+                )}
+              </ul>
+              <div className="mt-2 flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="confirm-delete-checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  disabled={isDeleting}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
+                />
+                <label htmlFor="confirm-delete-checkbox" className="text-[11px] font-bold text-amber-900 cursor-pointer select-none leading-normal">
+                  I understand that this employee has active assignments and I want to delete them anyway.
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              disabled={isDeleting}
+              className="flex-1 h-11 rounded-xl border border-slate-200 text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isDeleting || !confirmed}
+              className="flex-1 h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[13px] font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isDeleting ? (
+                <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              ) : (
+                <>Delete</>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────────────────
 export default function AdminEmployeesPage() {
+  const { profile } = useAdminProfile();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<Employee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -212,14 +319,56 @@ export default function AdminEmployeesPage() {
     const res = await toggleEmployeeStatus(emp.id, emp.status);
     if (res.success && res.newStatus) {
       setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, status: res.newStatus! } : e));
+      showToast(`Employee status updated to ${res.newStatus}.`, "success");
     } else if (res.error) {
-      alert(res.error);
+      showToast(res.error, "error");
     }
     setActionMenu(null);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/employees?id=${deleteTarget.id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        showToast(data.message || "Employee deleted successfully.", "success");
+        setEmployees(prev => prev.filter(e => e.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      } else {
+        showToast(data.error || "Failed to delete employee.", "error");
+      }
+    } catch (e) {
+      console.error("[DELETE_EMPLOYEE]", e);
+      showToast("An unexpected error occurred during employee deletion.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 relative">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-[250] flex items-center gap-2 px-4 py-3.5 rounded-xl shadow-lg border transition-all duration-300 transform translate-y-0 ${
+            toast.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+              : "bg-rose-50 border-rose-200 text-rose-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+          )}
+          <span className="text-[13px] font-semibold">{toast.message}</span>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -304,6 +453,8 @@ export default function AdminEmployeesPage() {
                   const status = emp.status || "active";
                   const isActive = status === "active";
                   const isInvited = status === "invited";
+                  
+                  const isSelf = emp.id === profile?.id || emp.email === profile?.email;
 
                   return (
                     <tr
@@ -356,36 +507,60 @@ export default function AdminEmployeesPage() {
                         </button>
                       </td>
 
-                      {/* Actions Menu */}
-                      <td className="px-4 py-4">
-                        <div className="relative" onClick={e => e.stopPropagation()}>
+                      {/* Actions Column */}
+                      <td className="px-4 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                          {/* Delete Employee */}
                           <button
-                            onClick={() => setActionMenu(actionMenu === emp.id ? null : emp.id)}
-                            className="opacity-0 group-hover:opacity-100 transition h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"
+                            onClick={() => {
+                              if (isSelf) return;
+                              setDeleteTarget(emp);
+                              setActionMenu(null);
+                            }}
+                            disabled={isSelf}
+                            className={`transition h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
+                              isSelf
+                                ? "opacity-20 cursor-not-allowed text-slate-300"
+                                : "opacity-0 group-hover:opacity-100 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                            }`}
+                            title={
+                              isSelf
+                                ? "You cannot delete yourself (currently logged-in admin)"
+                                : "Delete employee"
+                            }
                           >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
-                          {actionMenu === emp.id && (
-                            <div className="absolute right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 w-52 animate-in fade-in zoom-in-95 duration-100">
-                              <button
-                                onClick={() => { setResetTarget(emp); setActionMenu(null); }}
-                                className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-indigo-50 text-indigo-700 transition flex items-center gap-2"
-                              >
-                                <KeyRound className="h-4 w-4" /> Reset Password
-                              </button>
-                              <div className="border-t border-slate-100 my-1" />
-                              <button
-                                onClick={() => handleToggleStatus(emp)}
-                                className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-slate-50 transition flex items-center gap-2"
-                              >
-                                {emp.status === "deactivated" ? (
-                                  <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Reactivate</>
-                                ) : (
-                                  <><XCircle className="h-4 w-4 text-rose-400" /> Deactivate</>
-                                )}
-                              </button>
-                            </div>
-                          )}
+
+                          <div className="relative">
+                            <button
+                              onClick={() => setActionMenu(actionMenu === emp.id ? null : emp.id)}
+                              className="opacity-0 group-hover:opacity-100 transition h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 shrink-0"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                            {actionMenu === emp.id && (
+                              <div className="absolute right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 w-52 animate-in fade-in zoom-in-95 duration-100">
+                                <button
+                                  onClick={() => { setResetTarget(emp); setActionMenu(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-indigo-50 text-indigo-700 transition flex items-center gap-2"
+                                >
+                                  <KeyRound className="h-4 w-4" /> Reset Password
+                                </button>
+                                <div className="border-t border-slate-100 my-1" />
+                                <button
+                                  onClick={() => handleToggleStatus(emp)}
+                                  className="w-full px-4 py-2.5 text-left text-[13px] font-semibold hover:bg-slate-50 transition flex items-center gap-2"
+                                >
+                                  {emp.status === "deactivated" ? (
+                                    <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Reactivate</>
+                                  ) : (
+                                    <><XCircle className="h-4 w-4 text-rose-400" /> Deactivate</>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -403,6 +578,14 @@ export default function AdminEmployeesPage() {
         <ResetPasswordModal
           employee={resetTarget}
           onClose={() => { setResetTarget(null); }}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteEmployeeModal
+          employee={deleteTarget}
+          onClose={() => { setDeleteTarget(null); }}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
         />
       )}
     </div>
