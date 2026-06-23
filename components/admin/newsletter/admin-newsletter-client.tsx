@@ -70,6 +70,12 @@ interface Newsletter {
   created_at: string;
   seo_title?: string | null;
   seo_description?: string | null;
+  // New fields for SEO enrichment
+  featured_image_prompt?: string | null;
+  excerpt?: string | null;
+  faq?: any;
+  internal_links?: any;
+  schema_markup?: any;
 }
 
 interface Subscriber {
@@ -355,6 +361,30 @@ export function AdminNewsletterClient({ initialNewsletters, initialSubscribers }
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
+  // Existing code unchanged
+  };
+
+  // New handler to generate drafts via API
+  const handleGenerateDrafts = async () => {
+    if (isPending) return;
+    try {
+      const res = await fetch('/api/generate-drafts', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) {
+        // Refresh newsletters list by fetching again
+        const supabase = await createAdminClient();
+        const refreshed = await getNewsletters(supabase, true);
+        setNewsletters(refreshed);
+        setSuccessMsg(`Generated ${result.inserted} draft articles.`);
+        setTimeout(() => setSuccessMsg(''), 4000);
+      } else {
+        throw new Error(result.error || 'Failed to generate drafts');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error generating drafts');
+      setTimeout(() => setErrorMsg(''), 4000);
+    }
+  };
     const nextStatus = !currentStatus;
     try {
       const updated = await togglePublishNewsletterAction(id, nextStatus);
@@ -728,6 +758,15 @@ export function AdminNewsletterClient({ initialNewsletters, initialSubscribers }
               className="bg-violet-600 hover:bg-violet-700 text-white rounded-[12px] px-3.5 py-1.5 text-xs font-bold transition shadow-sm disabled:opacity-50"
             >
               {isPending ? "Saving..." : "Publish"}
+            </button>
+            {/* Generate Drafts Button */}
+            <button
+              type="button"
+              onClick={handleGenerateDrafts}
+              disabled={isPending}
+              className="ml-2 bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-[12px] px-3.5 py-1.5 text-xs font-medium transition disabled:opacity-50"
+            >
+              Generate 50 Drafts
             </button>
           </div>
         </div>

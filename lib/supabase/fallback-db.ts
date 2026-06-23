@@ -459,6 +459,12 @@ export async function insertNewsletter(supabase: any, newsletter: any) {
     published_at: newsletter.is_published ? (newsletter.published_at || new Date().toISOString()) : null,
     seo_title: newsletter.seo_title || null,
     seo_description: newsletter.seo_description || null,
+    // New fields for SEO and content enrichment
+    featured_image_prompt: newsletter.featured_image_prompt || null,
+    excerpt: newsletter.excerpt || null,
+    faq: newsletter.faq || null,
+    internal_links: newsletter.internal_links || null,
+    schema_markup: newsletter.schema_markup || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
