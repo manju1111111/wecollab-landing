@@ -1,9 +1,10 @@
-import { getPlanDetails, getCreatorsByIds } from "../actions";
+import { getPlanDetails, getCreatorsByIds, getColumnPreferences } from "../actions";
 import { PlanWorkspace } from "@/components/plans/plan-workspace";
 import { redirect } from "next/navigation";
 
-export default async function PlanDetailsPage({ params }: { params: { id: string } }) {
-  const plan = await getPlanDetails(params.id);
+export default async function PlanDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const plan = await getPlanDetails(id);
   
   if (!plan) {
     redirect("/plans");
@@ -22,6 +23,8 @@ export default async function PlanDetailsPage({ params }: { params: { id: string
     acc[c.id] = c;
     return acc;
   }, {});
+
+  const columnPrefs = await getColumnPreferences(id);
   
-  return <PlanWorkspace plan={plan} creatorsMap={creatorsMap} />;
+  return <PlanWorkspace plan={plan} creatorsMap={creatorsMap} initialColumnPrefs={columnPrefs} />;
 }

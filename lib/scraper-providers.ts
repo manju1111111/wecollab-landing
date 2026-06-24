@@ -113,11 +113,15 @@ export class RapidApiProvider implements ScrapeProvider {
       }
 
       postsData.push({
+        post_id: node.id || "",
+        shortcode: node.shortcode || "",
+        caption: captionText,
         date: node.taken_at_timestamp ? new Date(node.taken_at_timestamp * 1000).toISOString() : null,
         likes: node.edge_liked_by?.count || node.edge_media_preview_like?.count || 0,
         comments: node.edge_media_to_comment?.count || 0,
         is_video: !!node.is_video,
-        views: node.video_view_count || 0
+        views: node.video_view_count || 0,
+        url: node.shortcode ? `https://www.instagram.com/p/${node.shortcode}/` : ""
       });
     });
 

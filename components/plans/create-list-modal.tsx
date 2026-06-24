@@ -2,7 +2,7 @@
 
 import { X, Lightbulb } from "lucide-react";
 import { useState } from "react";
-import { createList } from "@/app/plans/actions";
+import { createList } from "../../app/plans/actions";
 
 const COLORS = ["#ef4444", "#f59e0b", "#84cc16", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#0f172a"];
 const PLATFORMS = ["Instagram", "YouTube", "Twitter", "Facebook"];

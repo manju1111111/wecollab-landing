@@ -361,30 +361,6 @@ export function AdminNewsletterClient({ initialNewsletters, initialSubscribers }
   };
 
   const handleTogglePublish = async (id: string, currentStatus: boolean) => {
-  // Existing code unchanged
-  };
-
-  // New handler to generate drafts via API
-  const handleGenerateDrafts = async () => {
-    if (isPending) return;
-    try {
-      const res = await fetch('/api/generate-drafts', { method: 'POST' });
-      const result = await res.json();
-      if (result.success) {
-        // Refresh newsletters list by fetching again
-        const supabase = await createAdminClient();
-        const refreshed = await getNewsletters(supabase, true);
-        setNewsletters(refreshed);
-        setSuccessMsg(`Generated ${result.inserted} draft articles.`);
-        setTimeout(() => setSuccessMsg(''), 4000);
-      } else {
-        throw new Error(result.error || 'Failed to generate drafts');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error generating drafts');
-      setTimeout(() => setErrorMsg(''), 4000);
-    }
-  };
     const nextStatus = !currentStatus;
     try {
       const updated = await togglePublishNewsletterAction(id, nextStatus);
@@ -394,6 +370,27 @@ export function AdminNewsletterClient({ initialNewsletters, initialSubscribers }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to update publish status.");
       setTimeout(() => setErrorMsg(""), 3000);
+    }
+  };
+
+  // New handler to generate drafts via API
+  const handleGenerateDrafts = async () => {
+    if (isPending) return;
+    try {
+      const res = await fetch('/api/generate-drafts', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) {
+        setSuccessMsg(`Generated ${result.inserted} draft articles. Reloading...`);
+        setTimeout(() => {
+          setSuccessMsg('');
+          window.location.reload();
+        }, 1500);
+      } else {
+        throw new Error(result.error || 'Failed to generate drafts');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error generating drafts');
+      setTimeout(() => setErrorMsg(''), 4000);
     }
   };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, ExternalLink, Mail, MessageSquare, Briefcase, MapPin, TrendingUp, MoreVertical, Edit, UserX, Sparkles } from "lucide-react";
+import { X, ExternalLink, Mail, MessageSquare, Briefcase, MapPin, TrendingUp, MoreVertical, Edit, UserX, Sparkles, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatNumber } from "@/lib/utils";
@@ -17,6 +17,8 @@ export function QuickPreviewDrawer({
   onEdit: (creator: any) => void;
 }) {
   const [isRecategorizing, setIsRecategorizing] = useState(false);
+  const [isSyncingMetrics, setIsSyncingMetrics] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
 
   const handleRecategorize = async () => {
     if (!creator) return;
@@ -59,6 +61,29 @@ export function QuickPreviewDrawer({
     }
   };
 
+
+  const handleSyncMetrics = async () => {
+    if (!creator?.username) return;
+    setIsSyncingMetrics(true);
+    setSyncMessage("");
+    try {
+      const res = await fetch("/api/admin/background-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: creator.username }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSyncMessage(`✓ Metrics synced — ER: ${data.metrics?.engagement_rate?.toFixed(2) ?? "—"}%`);
+      } else {
+        setSyncMessage(`⚠ ${data.error || "Sync failed"}`);
+      }
+    } catch (e: any) {
+      setSyncMessage(`⚠ ${e.message}`);
+    } finally {
+      setIsSyncingMetrics(false);
+    }
+  };
 
   if (!creator) return null;
 
@@ -184,6 +209,11 @@ export function QuickPreviewDrawer({
         </div>
 
         {/* Footer Actions */}
+        {syncMessage && (
+          <div className="px-4 py-2 text-[12px] font-semibold text-slate-600 bg-slate-50 border-t border-slate-100">
+            {syncMessage}
+          </div>
+        )}
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center gap-3">
           <button 
             onClick={handleRecategorize}
@@ -191,6 +221,14 @@ export function QuickPreviewDrawer({
             className="flex-1 flex items-center justify-center gap-2 h-10 bg-indigo-650 hover:bg-indigo-750 text-white disabled:opacity-50 text-[13px] font-bold rounded-xl transition-all shadow-sm"
           >
             <Sparkles className="h-4 w-4" /> {isRecategorizing ? "Categorizing..." : "Re-categorize"}
+          </button>
+          <button
+            onClick={handleSyncMetrics}
+            disabled={isSyncingMetrics}
+            title="Sync Instagram metrics (engagement, reach, virality scores)"
+            className="h-10 px-3 flex items-center justify-center bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-slate-600 text-[13px] font-bold rounded-xl transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncingMetrics ? "animate-spin" : ""}`} />
           </button>
           <button 
             onClick={() => {

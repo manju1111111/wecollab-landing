@@ -280,6 +280,25 @@ function AdminCreatorsInner() {
       } catch (e) {
         console.warn("[BROADCAST_WARN] BroadcastChannel not supported:", e);
       }
+
+      // 🔄 Fire background Instagram metrics sync (non-blocking)
+      // This populates creator_metrics, creator_profiles, creator_ai_scores etc.
+      // so all Plan Workspace columns and Discover page metrics are available.
+      if (inserted.username) {
+        fetch("/api/admin/background-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: inserted.username }),
+        }).then(res => {
+          if (!res.ok) {
+            res.json().then(d => console.warn(`[BACKGROUND_SYNC_WARN] Metrics sync for @${inserted.username} failed:`, d.error));
+          } else {
+            console.log(`[BACKGROUND_SYNC] Metrics sync kicked off for @${inserted.username}`);
+          }
+        }).catch(e => {
+          console.warn(`[BACKGROUND_SYNC_WARN] Could not start metrics sync for @${inserted.username}:`, e.message);
+        });
+      }
     }
     if (error) {
       console.error("[DATABASE_INSERT_ERROR]", error);

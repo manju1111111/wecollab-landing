@@ -22,6 +22,7 @@ export type Newsletter = {
   faq?: any;
   internal_links?: any;
   schema_markup?: any;
+  created_at?: string;
 };
 
 const TOPICS = [
@@ -85,7 +86,7 @@ export async function generateArticle(topic: string): Promise<Newsletter> {
     throw new Error(`OpenAI request failed: ${err}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   const jsonStr = data.choices?.[0]?.message?.content;
   let parsed: any;
   try {
@@ -100,7 +101,7 @@ export async function generateArticle(topic: string): Promise<Newsletter> {
     slug: parsed.slug,
     summary: parsed.summary,
     content: parsed.content,
-    cover_image: null,
+    cover_image: undefined,
     category: topic,
     tags: parsed.tags || [],
     author_name: "WeCollab Team",
