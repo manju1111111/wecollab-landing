@@ -6,8 +6,6 @@ export async function GET() {
   const apiKeyLength = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0;
   const apiKeyPrefix = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 7) : "none";
 
-  console.log(`[TEST_GEMINI] Starting diagnostics. Key Present: ${apiKeyPresent}, Length: ${apiKeyLength}`);
-
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json({
       success: false,
@@ -19,8 +17,6 @@ export async function GET() {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
-    console.log("[TEST_GEMINI] Calling model.generateContent...");
     const result = await model.generateContent("Respond with the word 'OK' only.");
     const text = result.response.text().trim();
 
@@ -31,7 +27,6 @@ export async function GET() {
       details: { apiKeyPresent, apiKeyLength, apiKeyPrefix }
     });
   } catch (error: any) {
-    console.error("[TEST_GEMINI_ERROR]", error);
     return NextResponse.json({
       success: false,
       error: error.message || "Unknown error",
