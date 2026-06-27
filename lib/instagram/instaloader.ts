@@ -297,17 +297,25 @@ export class InstaloaderService {
     
     // Auto-select filters using the shared AI engine
     try {
+      console.log(`[INSTAGRAM_SERVICE] Starting AI classification check for @${profile.username}...`);
+      console.log(`[INSTAGRAM_SERVICE] GEMINI_API_KEY present: ${!!process.env.GEMINI_API_KEY}`);
       if (process.env.GEMINI_API_KEY) {
-        console.log(`[INSTAGRAM_SERVICE] Running automatic taxonomy classification for @${profile.username}...`);
         const captions = posts.map(p => p.caption).filter(Boolean);
+        console.log(`[INSTAGRAM_SERVICE] Calling classifyCreatorFilters for @${profile.username} with ${captions.length} captions...`);
         const classification = await classifyCreatorFilters(profile.username, profile.biography || "", captions);
         profile.tags = classification.tags;
         profile.category = classification.category;
         profile.filters = classification.filters;
-        console.log(`[INSTAGRAM_SERVICE] Classified @${profile.username}: Category=${classification.category}, Tags Count=${classification.tags.length}`);
+        console.log(`[INSTAGRAM_SERVICE] Classification completed successfully for @${profile.username}!`);
+      } else {
+        console.warn(`[INSTAGRAM_SERVICE] GEMINI_API_KEY is not defined - skipping classification.`);
       }
     } catch (e: any) {
-      console.warn(`[INSTAGRAM_SERVICE] AI classification failed for @${profile.username}:`, e.message);
+      console.error(`[INSTAGRAM_SERVICE] AI classification error for @${profile.username}:`, {
+        message: e.message,
+        stack: e.stack,
+        error: e
+      });
     }
 
     const lastSyncTimestamp = new Date().toISOString();

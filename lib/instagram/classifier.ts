@@ -2,8 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { CREATOR_CATEGORIES } from "@/data/creator-categories";
 import masterFilters from "@/data/filters.json";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 export interface MatchedFilter {
   filter_id: string;
   filter_name: string;
@@ -22,9 +20,14 @@ export async function classifyCreatorFilters(
   filters: MatchedFilter[];
   usage: { promptTokenCount: number; candidatesTokenCount: number };
 }> {
+  console.log(`[CLASSIFIER] Starting classification for @${username}...`);
+  console.log(`[CLASSIFIER] process.env.GEMINI_API_KEY is present: ${!!process.env.GEMINI_API_KEY}`);
+
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not defined in environment variables");
   }
+
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
   // 1. Generate full 250+ master filters catalog dynamically from CREATOR_CATEGORIES
   const fullCatalog = CREATOR_CATEGORIES.flatMap(group => {
@@ -74,7 +77,20 @@ JSON Schema to follow:
 }
 `;
 
-  const result = await model.generateContent(prompt);
+  console.log(`[CLASSIFIER] Model defined. Immediately before calling Gemini model.generateContent...`);
+  let result;
+  try {
+    result = await model.generateContent(prompt);
+    console.log(`[CLASSIFIER] Gemini returned successfully.`);
+  } catch (error: any) {
+    console.error(`[CLASSIFIER] Gemini API call failed:`, {
+      message: error.message,
+      status: error.status,
+      stack: error.stack,
+      raw: error
+    });
+    throw error;
+  }
   const text = result.response.text();
   const usage = result.response.usageMetadata || { promptTokenCount: 0, candidatesTokenCount: 0 };
 
