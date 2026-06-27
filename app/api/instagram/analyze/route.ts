@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { instaloaderService } from "../../../../lib/instagram/instaloader";
 
+// Allow up to 60 seconds for the Instagram scraping + AI classification to complete
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
