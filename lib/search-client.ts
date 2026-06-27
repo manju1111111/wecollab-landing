@@ -61,6 +61,12 @@ export const searchEngine = {
       facetFilters.push(`location:${filters.location}`);
     }
 
+    if (filters.subCategories && filters.subCategories.length > 0) {
+      // Filter by selected subcategories (OR relation for multiple selections)
+      const subCatFilters = filters.subCategories.map(sub => `categories:${sub}`);
+      facetFilters.push(subCatFilters as any);
+    }
+
     // Build Numeric Filters
     const numericFilters: string[] = [];
 
@@ -133,4 +139,37 @@ export const searchEngine = {
     
     return true;
   },
+
+  configureIndexSettings: async (): Promise<void> => {
+    const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+    const adminKey = process.env.ALGOLIA_ADMIN_KEY;
+    if (!appId || !adminKey) {
+      throw new Error("Algolia admin keys (NEXT_PUBLIC_ALGOLIA_APP_ID, ALGOLIA_ADMIN_KEY) are missing in environment variables.");
+    }
+    
+    const adminClient = algoliasearch(appId, adminKey);
+    await adminClient.setSettings({
+      indexName: INDEX_NAME,
+      indexSettings: {
+        attributesForFaceting: [
+          "creator_status",
+          "visibility",
+          "profile_completed",
+          "verification_passed",
+          "is_deleted",
+          "platforms.name",
+          "location",
+          "categories",
+          "tags"
+        ],
+        searchableAttributes: [
+          "name",
+          "username",
+          "bio",
+          "category",
+          "location"
+        ]
+      }
+    });
+  }
 };

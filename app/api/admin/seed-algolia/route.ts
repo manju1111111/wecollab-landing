@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { algoliasearch } from "algoliasearch";
 import { MOCK_CREATORS } from "@/data/mock-creators";
+import { searchEngine } from "@/lib/search-client";
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
     }
 
     const adminClient = algoliasearch(appId, adminKey);
+
+    // Configure the index settings first (attributesForFaceting, searchableAttributes)
+    await searchEngine.configureIndexSettings();
 
     // Format the creators for Algolia (requires objectID)
     const objectsToSave = MOCK_CREATORS.map((creator) => ({

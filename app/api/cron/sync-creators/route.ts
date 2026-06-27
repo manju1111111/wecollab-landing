@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+
+// Allow up to 120 seconds for the bulk cron sync to complete
+export const maxDuration = 120;
 import { getScrapeProvider } from "@/lib/scraper-providers";
 import { searchEngine } from "@/lib/search-client";
 import { sendWebhookNotification } from "@/lib/webhook-notifier";
@@ -24,10 +27,10 @@ export async function GET(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Fetch all creators from the database
+    // Fetch all creators from the database (including tags and category for Algolia indexing)
     const { data: creators, error: dbError } = await supabase
       .from("creators")
-      .select("id, name, username, followers, engagement_rate, avg_reel_views, following, posts, platforms, profile_image, profile_pic_url");
+      .select("id, name, username, followers, engagement_rate, avg_reel_views, following, posts, platforms, profile_image, profile_pic_url, tags, category");
 
     if (dbError) {
       console.error("[CRON_ERROR] Failed to fetch creators from DB:", dbError);
@@ -134,6 +137,9 @@ export async function GET(request: Request) {
           engagement_rate: engagementRate,
           engagementRate: engagementRate,
           profile_image: scrapedData.profilePicture || creator.profile_image || "",
+          tags: creator.tags || [],
+          categories: creator.tags || [],
+          category: creator.category || "General",
           platforms: [
             {
               name: platformName,

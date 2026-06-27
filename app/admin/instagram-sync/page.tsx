@@ -148,6 +148,18 @@ export default function InstagramSyncPage() {
         await syncCreatorFilterAssignments(supabase, data.id, syncedData.profile.tags);
       }
 
+      // Sync with Algolia search index immediately
+      try {
+        const appUrl = window.location.origin;
+        await fetch(`${appUrl}/api/admin/sync-algolia`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "save", creator: data }),
+        });
+      } catch (algoliaErr: any) {
+        console.warn("[INSTAGRAM_SYNC] Algolia indexing failed:", algoliaErr.message);
+      }
+
       setAlreadyInDb(true);
       alert(`Successfully added @${syncedData.profile.username} to the database!`);
     } catch (err: any) {
