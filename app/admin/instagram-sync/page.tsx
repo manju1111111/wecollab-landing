@@ -22,8 +22,12 @@ import {
   Clock,
   BookOpen,
   PieChart,
-  Tag
+  Tag,
+  Check,
+  Database
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { syncCreatorFilterAssignments } from "@/lib/instagram/classifier";
 
 const Instagram = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -60,6 +64,99 @@ export default function InstagramSyncPage() {
   // Scraped Data State
   const [syncedData, setSyncedData] = useState<any | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  const [isDbLoading, setIsDbLoading] = useState(false);
+  const [alreadyInDb, setAlreadyInDb] = useState(false);
+
+  // Check if creator is already in database
+  useEffect(() => {
+    async function checkDb() {
+      if (!syncedData?.profile?.username) {
+        setAlreadyInDb(false);
+        return;
+      }
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("creators")
+          .select("id")
+          .eq("username", syncedData.profile.username)
+          .maybeSingle();
+
+        if (data) {
+          setAlreadyInDb(true);
+        } else {
+          setAlreadyInDb(false);
+        }
+      } catch (err) {
+        console.error("Error checking creator database status:", err);
+      }
+    }
+    checkDb();
+  }, [syncedData]);
+
+  const handleDatabaseAction = async () => {
+    if (!syncedData?.profile?.username) return;
+    setIsDbLoading(true);
+    try {
+      const supabase = createClient();
+      
+      if (alreadyInDb) {
+        alert("This creator is already in the database.");
+        setIsDbLoading(false);
+        return;
+      }
+
+      const newCreator = {
+        name: syncedData.profile.full_name || syncedData.profile.username,
+        username: syncedData.profile.username,
+        bio: syncedData.profile.biography || "",
+        profile_image: syncedData.profile.profile_pic_url || "",
+        profile_pic_url: syncedData.profile.profile_pic_url || "",
+        followers: syncedData.profile.followers || 0,
+        avg_reel_views: String(syncedData.metrics.average_views || 0),
+        engagement_rate: syncedData.metrics.engagement_rate || 0,
+        verified: syncedData.profile.is_verified || false,
+        verification_status: "Verified",
+        visibility_status: true,
+        category: syncedData.profile.category || "General",
+        location: "",
+        has_manager: false,
+        brand_safe: true,
+        tags: syncedData.profile.tags || [],
+        platforms: [
+          {
+            name: "Instagram",
+            handle: syncedData.profile.username,
+            followers: syncedData.profile.followers || 0,
+          }
+        ],
+      };
+
+      const { data, error } = await supabase
+        .from("creators")
+        .insert(newCreator)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Sync filter assignments dynamically from the scraper results
+      if (data?.id && syncedData.profile.tags) {
+        await syncCreatorFilterAssignments(supabase, data.id, syncedData.profile.tags);
+      }
+
+      setAlreadyInDb(true);
+      alert(`Successfully added @${syncedData.profile.username} to the database!`);
+    } catch (err: any) {
+      console.error("Error adding creator to database:", err);
+      alert(`Failed to add creator: ${err.message || err}`);
+    } finally {
+      setIsDbLoading(false);
+    }
+  };
 
   // Auto scroll logs
   useEffect(() => {
@@ -286,9 +383,9 @@ export default function InstagramSyncPage() {
               {/* Profile Header Block */}
               <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <img 
-                  src={syncedData.profile.profile_pic_url || "/assets/logo.jpg"} 
+                  src={syncedData.profile.profile_pic_url ? `/api/proxy-image?url=${encodeURIComponent(syncedData.profile.profile_pic_url)}` : "/assets/logo.jpg"} 
                   alt={syncedData.profile.username}
-                  className="h-20 w-20 rounded-3xl object-cover border-2 border-slate-100 shadow-sm shrink-0"
+                  className="h-20 w-20 rounded-full object-cover border-2 border-slate-100 shadow-sm shrink-0"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop";
                   }}
@@ -304,16 +401,42 @@ export default function InstagramSyncPage() {
                   <p className="text-xs font-semibold text-slate-400 mt-2 line-clamp-2 max-w-xl">
                     {syncedData.profile.biography || "No biography provided."}
                   </p>
-                  {syncedData.profile.external_url && (
-                    <a 
-                      href={syncedData.profile.external_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-indigo-600 hover:underline text-xs font-bold inline-flex items-center gap-1 mt-2.5"
+                  <div className="flex flex-wrap items-center gap-3.5 mt-3">
+                    {syncedData.profile.external_url && (
+                      <a 
+                        href={syncedData.profile.external_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline text-xs font-bold inline-flex items-center gap-1"
+                      >
+                        {syncedData.profile.external_url} <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    )}
+                    
+                    <button
+                      onClick={handleDatabaseAction}
+                      disabled={isDbLoading}
+                      className={`h-7 px-3 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
+                        alreadyInDb 
+                          ? "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100" 
+                          : "bg-indigo-600 border-indigo-650 text-white hover:bg-indigo-750 shadow-md shadow-indigo-50"
+                      }`}
                     >
-                      {syncedData.profile.external_url} <ArrowUpRight className="h-3 w-3" />
-                    </a>
-                  )}
+                      {isDbLoading ? (
+                        <>
+                          <RefreshCw className="h-3 w-3 animate-spin" /> Processing...
+                        </>
+                      ) : alreadyInDb ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-500 stroke-[3px]" /> In Database
+                        </>
+                      ) : (
+                        <>
+                          <Database className="h-3.5 w-3.5" /> Add to Database
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Discovery Rank Badge */}

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     // Fetch all creators from the database
     const { data: creators, error: dbError } = await supabase
       .from("creators")
-      .select("id, name, username, followers, engagement_rate, avg_reel_views, following, posts, platforms");
+      .select("id, name, username, followers, engagement_rate, avg_reel_views, following, posts, platforms, profile_image, profile_pic_url");
 
     if (dbError) {
       console.error("[CRON_ERROR] Failed to fetch creators from DB:", dbError);
@@ -116,6 +116,8 @@ export async function GET(request: Request) {
             engagement_rate: engagementRate,
             avg_reel_views: String(avgViews),
             last_fetched_at: new Date().toISOString(),
+            profile_image: scrapedData.profilePicture || creator.profile_image || null,
+            profile_pic_url: scrapedData.profilePicture || creator.profile_pic_url || null,
           })
           .eq("id", creator.id);
 
@@ -131,6 +133,7 @@ export async function GET(request: Request) {
           avgReelViews: String(avgViews),
           engagement_rate: engagementRate,
           engagementRate: engagementRate,
+          profile_image: scrapedData.profilePicture || creator.profile_image || "",
           platforms: [
             {
               name: platformName,

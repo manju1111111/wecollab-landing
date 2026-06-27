@@ -151,7 +151,7 @@ export default async function CreatorPublicProfile({ params }: CreatorPageProps)
     "name": creator.name,
     "alternateName": username,
     "description": creator.bio || `Professional ${categoryLabel} Content Creator.`,
-    "image": creator.profile_image || creator.avatar || "",
+    "image": creator.profile_image || creator.profile_pic_url || creator.avatar || "",
     "jobTitle": `${categoryLabel} Content Creator`,
     "address": {
       "@type": "PostalAddress",
@@ -194,9 +194,9 @@ export default async function CreatorPublicProfile({ params }: CreatorPageProps)
             <div className="lg:col-span-5 bg-white border border-slate-200 rounded-[32px] p-6 sm:p-8 shadow-sm">
               <div className="flex flex-col items-center text-center">
                 <div className="relative h-28 w-28 rounded-full overflow-hidden border-4 border-violet-100/50 shadow-md">
-                  {creator.profile_image || creator.avatar ? (
+                  {creator.profile_image || creator.profile_pic_url || creator.avatar ? (
                     <Image
-                      src={creator.profile_image || creator.avatar}
+                      src={creator.profile_image || creator.profile_pic_url || creator.avatar}
                       alt={creator.name}
                       fill
                       sizes="112px"

@@ -44,9 +44,10 @@ export async function POST(req: Request) {
         name: creator.name || "",
         username: creator.username || "",
         bio: (creator.bio || "").slice(0, 500), // cap bio to keep record under 10KB
-        // Use profile_image_url (original CDN URL) for Algolia — it's lightweight.
-        // profile_image in Supabase is base64 (~10-30KB) which exceeds Algolia's 10KB limit.
-        profile_image: safeImage(creator.profile_image_url || creator.profile_image),
+        // Prefer the freshest creator profile image field first so refreshed Instagram photos
+        // propagate across Discovery and search results immediately.
+        profile_image: safeImage(creator.profile_pic_url || creator.profile_image || creator.profile_image_url || creator.avatar_url || creator.avatar),
+        profile_pic_url: safeImage(creator.profile_pic_url || creator.profile_image || creator.profile_image_url || creator.avatar_url || creator.avatar),
         followers: creator.followers || 0,
         totalFollowers: creator.followers || 0,
         avg_reel_views: creator.avg_reel_views || "0",

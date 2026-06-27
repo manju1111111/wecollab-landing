@@ -5,6 +5,7 @@ import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
 import { calculateCreatorMetrics, type InstagramPost, type CalculatedMetrics } from "./metrics-engine";
 import { getScrapeProvider } from "../scraper-providers";
+import { classifyCreatorFilters } from "./classifier";
 
 const execAsync = promisify(exec);
 
@@ -18,6 +19,9 @@ export interface InstagramProfileData {
   profile_pic_url: string;
   is_verified: boolean;
   external_url: string;
+  tags?: string[];
+  category?: string;
+  filters?: any[];
 }
 
 export interface InstagramSyncResult {
@@ -211,61 +215,101 @@ export class InstaloaderService {
   }
 
   /**
-   * Performs full analysis: Scrapes profile & posts, runs Metrics Engine, saves results
+   * Internal helper: scrape via RapidAPI and normalize output into the same
+   * shape that the rest of analyzeProfile expects (matching Instaloader output format).
    */
+  private async _scrapeViaRapidAPI(cleanUsername: string): Promise<{ profile: InstagramProfileData; posts: InstagramPost[] }> {
+    const rapidApi = getScrapeProvider("rapidapi");
+    const scraped = await rapidApi.scrape(cleanUsername);
+
+    return {
+      profile: {
+        username: scraped.username,
+        full_name: scraped.name,
+        biography: scraped.bio,
+        followers: scraped.followers,
+        following: scraped.following,
+        posts_count: scraped.posts_data?.length || 0,
+        profile_pic_url: scraped.profilePicture,
+        is_verified: false,
+        external_url: scraped.website,
+      },
+      posts: (scraped.posts_data || []).map((p: any, idx: number) => ({
+        post_id: p.post_id || `rapidapi-${idx}-${Date.now()}`,
+        shortcode: p.shortcode || `rapidapi-${idx}`,
+        caption: p.caption || "",
+        likes: p.likes || 0,
+        comments: p.comments || 0,
+        views: p.views || 0,
+        timestamp: p.date || new Date().toISOString(),
+        is_video: !!p.is_video,
+        url: p.url || (p.shortcode ? `https://www.instagram.com/p/${p.shortcode}/` : ""),
+      })),
+    };
+  }
+
+
+  /**
+   * Performs full analysis: Scrapes profile & posts, runs Metrics Engine, saves results.
+   *
+   * ARCHITECTURE NOTE: Python/Instaloader is NOT available on Vercel serverless.
+   * This method uses the getScrapeProvider() abstraction (RapidAPI by default) which
+   * is the exact same path used by the creator enrichment pipeline. The Python subprocess
+   * is only viable in local dev environments with Python installed.
+   */
+
   async analyzeProfile(username: string): Promise<InstagramSyncResult> {
     const startTime = Date.now();
     const cleanUsername = username.replace("@", "").trim();
 
+    // Determine provider: use Instaloader only in local dev when INSTAGRAM_USERNAME is set
+    // AND we are not running on Vercel (no `VERCEL` env var). Otherwise always use RapidAPI.
+    const isVercel = !!process.env.VERCEL;
+    const hasInstaloaderCreds = !!(process.env.INSTAGRAM_USERNAME && process.env.INSTAGRAM_PASSWORD);
+    const useInstaloader = !isVercel && hasInstaloaderCreds;
+
     let data;
-    try {
-      data = await scraperQueue.enqueue(async () => {
-        const result = await this.executeScraper("both", cleanUsername);
-        if (result.error) {
-          throw new Error(result.error);
-        }
-        return result;
-      });
-    } catch (scraperErr: any) {
-      console.warn(`[INSTAGRAM_SERVICE] Instaloader sync failed for @${cleanUsername}: ${scraperErr.message}. Attempting RapidAPI fallback...`);
+
+    if (useInstaloader) {
+      // Local dev path: attempt Python subprocess, fall back to RapidAPI on failure
       try {
-        const rapidApi = getScrapeProvider("rapidapi");
-        const scraped = await rapidApi.scrape(cleanUsername);
-        
-        data = {
-          profile: {
-            username: scraped.username,
-            full_name: scraped.name,
-            biography: scraped.bio,
-            followers: scraped.followers,
-            following: scraped.following,
-            posts_count: scraped.posts_data?.length || 0,
-            profile_pic_url: scraped.profilePicture,
-            is_verified: false,
-            external_url: scraped.website
-          },
-          posts: (scraped.posts_data || []).map((p: any, idx: number) => ({
-            post_id: p.post_id || `rapidapi-${idx}-${Date.now()}`,
-            shortcode: p.shortcode || `rapidapi-${idx}`,
-            caption: p.caption || "",
-            likes: p.likes || 0,
-            comments: p.comments || 0,
-            views: p.views || 0,
-            timestamp: p.date || new Date().toISOString(),
-            is_video: !!p.is_video,
-            url: p.url || (p.shortcode ? `https://www.instagram.com/p/${p.shortcode}/` : "")
-          }))
-        };
-        console.log(`[INSTAGRAM_SERVICE] RapidAPI fallback sync succeeded for @${cleanUsername}`);
-      } catch (fallbackErr: any) {
-        console.error(`[INSTAGRAM_SERVICE] RapidAPI fallback failed: ${fallbackErr.message}`);
-        throw new Error(`Instagram sync failed: ${scraperErr.message} (Fallback failed: ${fallbackErr.message})`);
+        data = await scraperQueue.enqueue(async () => {
+          const result = await this.executeScraper("both", cleanUsername);
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          return result;
+        });
+        console.log(`[INSTAGRAM_SERVICE] Instaloader sync succeeded for @${cleanUsername}`);
+      } catch (scraperErr: any) {
+        console.warn(`[INSTAGRAM_SERVICE] Instaloader failed (${scraperErr.message}). Falling back to RapidAPI...`);
+        data = await this._scrapeViaRapidAPI(cleanUsername);
       }
+    } else {
+      // Production / Vercel path: use RapidAPI directly — no Python dependency
+      console.log(`[INSTAGRAM_SERVICE] Using RapidAPI provider for @${cleanUsername} (Vercel=${isVercel})`);
+      data = await this._scrapeViaRapidAPI(cleanUsername);
     }
 
-    const profile: InstagramProfileData = data.profile;
+    const profile: InstagramProfileData & { tags?: string[]; category?: string; filters?: any[] } = data.profile;
     const posts: InstagramPost[] = data.posts || [];
     const metrics: CalculatedMetrics = calculateCreatorMetrics(posts, profile.followers, profile.following);
+    
+    // Auto-select filters using the shared AI engine
+    try {
+      if (process.env.GEMINI_API_KEY) {
+        console.log(`[INSTAGRAM_SERVICE] Running automatic taxonomy classification for @${profile.username}...`);
+        const captions = posts.map(p => p.caption).filter(Boolean);
+        const classification = await classifyCreatorFilters(profile.username, profile.biography || "", captions);
+        profile.tags = classification.tags;
+        profile.category = classification.category;
+        profile.filters = classification.filters;
+        console.log(`[INSTAGRAM_SERVICE] Classified @${profile.username}: Category=${classification.category}, Tags Count=${classification.tags.length}`);
+      }
+    } catch (e: any) {
+      console.warn(`[INSTAGRAM_SERVICE] AI classification failed for @${profile.username}:`, e.message);
+    }
+
     const lastSyncTimestamp = new Date().toISOString();
 
     const syncResult: InstagramSyncResult = {

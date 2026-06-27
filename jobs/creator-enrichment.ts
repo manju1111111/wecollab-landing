@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getScrapeProvider } from "@/lib/scraper-providers";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import masterFilters from "@/data/filters.json";
+import { classifyCreatorFilters } from "@/lib/instagram/classifier";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -210,49 +211,17 @@ JSON Schema to follow:
 
       // Step 3.5: Run AI Filter Mapping using Gemini 2.5 Flash
       const filterMappingResults = await io.runTask("run-ai-filter-mapping", async () => {
-        const prompt = `
-You are WeCollab's Lead AI Creator Categorization Specialist. Compare the creator's profile against our master filter catalog and match all applicable filters.
-
-Creator Profile:
-- Username: @${scrapedData.username}
-- Display Name: ${scrapedData.name || scrapedData.username}
-- Biography: "${scrapedData.bio || ""}"
-- Recent Captions: ${JSON.stringify(scrapedData.captions || [])}
-
-Master Filter Catalog:
-${JSON.stringify(masterFilters)}
-
-Rules:
-1. Output a JSON object with a single key "matches", containing an array of matched filters.
-2. For each match, provide:
-   - "filter_id": the exact ID from the catalog
-   - "confidence": a score between 0.00 and 1.00 indicating match certainty
-   - "reasoning": a concise explanation of why this filter applies based on the bio or captions.
-3. Be strict: only include matches where there is direct evidence in the creator's profile.
-4. Return a RAW JSON object ONLY (no markdown code blocks, no backticks, no wrap text).
-
-JSON Schema to follow:
-{
-  "matches": [
-    {
-      "filter_id": "video_format_face_showing",
-      "confidence": 0.95,
-      "reasoning": "Creator is seen talking directly to the camera in their recent reels."
-    }
-  ]
-}
-`;
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        const usage = result.response.usageMetadata || { promptTokenCount: 0, candidatesTokenCount: 0 };
-
-        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const aiOutput = JSON.parse(cleanJson);
-
+        const result = await classifyCreatorFilters(
+          scrapedData.username,
+          scrapedData.bio || "",
+          scrapedData.captions || []
+        );
         return {
-          output: aiOutput,
-          usage,
+          output: { matches: result.filters },
+          usage: {
+            promptTokenCount: result.usage.promptTokenCount,
+            candidatesTokenCount: result.usage.candidatesTokenCount
+          }
         };
       });
 
@@ -273,7 +242,7 @@ JSON Schema to follow:
 
       // Log AI Filter Mapping Analysis Output to Database for Audit
       await io.runTask("log-filter-mapping-output", async () => {
-        const inputSummary = `Username: @${scrapedData.username}, Bio Length: ${scrapedData.bio?.length || 0}, Filters Catalog Size: ${masterFilters.length}`;
+        const inputSummary = `Username: @${scrapedData.username}, Bio Length: ${scrapedData.bio?.length || 0}`;
         await supabase.from("ai_analysis_outputs").insert({
           creator_id: creatorId || null,
           run_id: runRecordId,
@@ -338,19 +307,15 @@ JSON Schema to follow:
         // Filter out any assignments with confidence < 0.75
         const validAssignments = matchedFilters.filter((f: any) => f.confidence >= 0.75);
 
-        // Map matched filter IDs to filter names and details from filters.json
-        const tagsToAssign = validAssignments.map((f: any) => {
-          const matchedItem = masterFilters.find((item: any) => item.id === f.filter_id);
-          return matchedItem?.name || f.filter_id;
-        });
+        // Map matched filter IDs to filter names and details
+        const tagsToAssign = validAssignments.map((f: any) => f.filter_name || f.filter_id);
 
         // Determine mainCategory dynamically from niches or highest confidence matched filter
         let mainCategory = aiOutput.niches?.value?.[0] || "General";
         if (validAssignments.length > 0) {
           const highestConf = validAssignments.reduce((prev: any, current: any) => (prev.confidence > current.confidence) ? prev : current);
-          const matchedItem = masterFilters.find((item: any) => item.id === highestConf.filter_id);
-          if (matchedItem?.group) {
-            mainCategory = matchedItem.group;
+          if (highestConf.filter_group) {
+            mainCategory = highestConf.filter_group;
           }
         }
 
@@ -362,6 +327,7 @@ JSON Schema to follow:
           name: scrapedData.name || cleanUsername,
           bio: scrapedData.bio || "",
           profile_image: scrapedData.profilePicture || "",
+          profile_pic_url: scrapedData.profilePicture || "",
           followers,
           following: scrapedData.following || 0,
           posts: postsCount,
@@ -378,6 +344,11 @@ JSON Schema to follow:
           last_fetched_at: new Date().toISOString(),
           email: emailMatch ? emailMatch[0] : null
         };
+
+        if (scrapedData.profilePicture) {
+          creatorPayload.profile_image = scrapedData.profilePicture;
+          creatorPayload.profile_pic_url = scrapedData.profilePicture;
+        }
 
         if (creatorId) {
           creatorPayload.id = creatorId;
@@ -411,13 +382,12 @@ JSON Schema to follow:
 
         // 1.5. Upsert Filter Assignments to database
         const assignmentPayloads = validAssignments.map((f: any) => {
-          const matchedItem = masterFilters.find((item: any) => item.id === f.filter_id);
           return {
             creator_id: savedCreator.id,
             run_id: runRecordId,
             filter_id: f.filter_id,
-            filter_name: matchedItem?.name || f.filter_id,
-            filter_group: matchedItem?.group || "General",
+            filter_name: f.filter_name,
+            filter_group: f.filter_group,
             confidence: f.confidence,
             reasoning: f.reasoning,
           };

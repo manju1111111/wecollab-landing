@@ -178,10 +178,10 @@ export function AddCreatorModal({
     setErrorMessage("");
     setCompletedSteps({});
     setActiveTimelineStep("profile_fetched");
-    setStatusMessage("Connecting to analysis pipeline...");
+    setStatusMessage("Connecting to Instagram sync engine...");
 
     try {
-      const res = await fetch("/api/admin/categorize-pipeline", {
+      const res = await fetch("/api/instagram/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: cleanUsername }),
@@ -189,104 +189,46 @@ export function AddCreatorModal({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to trigger analysis job.");
+        throw new Error(data.error || "Failed to fetch creator data from the Instagram sync engine.");
       }
 
       const data = await res.json();
-      if (!data.success || !data.runId) {
-        throw new Error(data.error || "Analysis pipeline enqueuing failed.");
+      if (!data?.profile) {
+        throw new Error("Instagram sync engine returned no profile data.");
       }
 
-      setEnrichRunId(data.runId);
-      pollPipelineStatus(data.runId);
+      setCompletedSteps({
+        profile_fetched: true,
+        content_analyzed: true,
+        categories_assigned: true,
+        filters_assigned: true,
+        brand_safety_checked: true,
+        score_generated: true,
+      });
+
+      setFullName(data.profile.full_name || "");
+      setBioText(data.profile.biography || "");
+      setFollowersCount(data.profile.followers ? String(data.profile.followers) : "");
+      setAvgViews(data.metrics?.avg_reel_views ? String(data.metrics.avg_reel_views) : "");
+      setEngagementRate(data.metrics?.engagement_rate ? String(data.metrics.engagement_rate) : "");
+      setLocationInput(data.profile.location || "");
+      setLanguageInput(data.profile.language || "English");
+      setGenderInput(data.profile.gender || "");
+      setEmailInput(data.profile.email || "");
+      setAvatarPreviewUrl(data.profile.profile_pic_url || "");
+      setProfileImageCdnUrl(data.profile.profile_pic_url || "");
+      setCreatorScore(data.metrics?.creator_quality_score ? parseFloat(String(data.metrics.creator_quality_score)) : 5.0);
+      setBrandSafeInput(data.profile.brand_safe !== false);
+      setSelectedTags(data.profile.tags || []);
+      setSelectedCategory(data.profile.category || "General");
+      if (data.profile.category) {
+        setActiveGroup(data.profile.category);
+      }
+
+      setStatusMessage("Instagram sync complete!");
+      setStep("review");
     } catch (e: any) {
       setErrorMessage(e.message || "An unexpected error occurred.");
-      setStep("input");
-    }
-  };
-
-  // Poll Trigger.dev Status
-  const pollPipelineStatus = async (runId: string) => {
-    let isDone = false;
-    let attempts = 0;
-    const maxAttempts = 45; // ~90 seconds max
-
-    while (!isDone && attempts < maxAttempts) {
-      attempts++;
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      try {
-        const res = await fetch(`/api/admin/enrich-status?runId=${runId}`);
-        if (!res.ok) continue;
-
-        const data = await res.json();
-        
-        // Update checkmarks in UI dynamically based on run steps completed in background
-        if (data.metadata?.steps) {
-          setCompletedSteps(data.metadata.steps);
-          
-          // Determine active step for loading animations
-          const order = ["profile_fetched", "content_analyzed", "categories_assigned", "filters_assigned", "brand_safety_checked", "score_generated"];
-          const currentActive = order.find(step => !data.metadata.steps[step]);
-          if (currentActive) {
-            setActiveTimelineStep(currentActive);
-          }
-        }
-
-        if (data.status === "SUCCESS") {
-          isDone = true;
-          // Mark all timeline steps complete
-          setCompletedSteps({
-            profile_fetched: true,
-            content_analyzed: true,
-            categories_assigned: true,
-            filters_assigned: true,
-            brand_safety_checked: true,
-            score_generated: true,
-          });
-
-          // Extract final output to populate forms
-          const out = data.output;
-          if (out) {
-            setFullName(out.name || "");
-            setBioText(out.bio || "");
-            setFollowersCount(out.followers ? String(out.followers) : "");
-            setAvgViews(out.avg_reel_views ? String(out.avg_reel_views) : "");
-            setEngagementRate(out.engagement_rate ? String(out.engagement_rate) : "");
-            setLocationInput(out.location || "");
-            setLanguageInput(out.language || "English");
-            setGenderInput(out.gender || "");
-            setEmailInput(out.email || "");
-            setAvatarPreviewUrl(out.profile_image || "");
-            setProfileImageCdnUrl(out.profile_image || "");
-            setCreatorScore(out.creator_score ? parseFloat(out.creator_score) : 5.0);
-            setBrandSafeInput(out.brand_safe !== false);
-            
-            // Map AI filters
-            setAiFilters(out.filters || []);
-            
-            // Set tags & categories
-            setSelectedTags(out.tags || []);
-            setSelectedCategory(out.category || "General");
-            if (out.category) {
-              setActiveGroup(out.category);
-            }
-          }
-          
-          setStatusMessage("Analysis complete!");
-          setStep("review");
-        } else if (["FAILED", "FAILURE", "CANCELED", "TIMED_OUT"].includes(data.status)) {
-          throw new Error(data.error || `Pipeline execution failed with status: ${data.status}`);
-        }
-      } catch (e: any) {
-        isDone = true;
-        setErrorMessage(e.message || "Pipeline failed to complete.");
-        setStep("input");
-      }
-    }
-
-    if (!isDone) {
-      setErrorMessage("Analysis request timed out on the background worker queue. Please try again.");
       setStep("input");
     }
   };

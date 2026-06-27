@@ -53,8 +53,9 @@ export function getInitials(name: string): string {
  */
 export function resolveCreatorImage(creator: any): string {
   return sanitizeImageSrc(
-    creator?.profile_image_url ||
+    creator?.profile_pic_url ||
     creator?.profile_image ||
+    creator?.profile_image_url ||
     creator?.avatar_url ||
     creator?.avatar ||
     ""

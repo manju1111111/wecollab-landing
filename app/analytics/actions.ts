@@ -499,7 +499,7 @@ export async function getCreatorAnalytics(
             username: cachedCreator.username,
             platform,
             profile_url: cachedCreator.profile_url || `https://${platform.toLowerCase()}.com/${cachedCreator.username}`,
-            profile_pic_url: cachedCreator.profile_pic_url || undefined,
+            profile_pic_url: cachedCreator.profile_pic_url || cachedCreator.profile_image || undefined,
             followers: cachedCreator.followers || 0,
             following: cachedCreator.following || 0,
             posts: cachedCreator.posts || cachedCreator.posts_count || 0,
@@ -567,7 +567,7 @@ export async function getCreatorAnalytics(
 
     // ── Upsert to DB ──
     try {
-      const upsertPayload = {
+      const upsertPayload: any = {
         name: report.name,
         username: handle,
         email: `${handle}@wecollab-leads.in`,
@@ -579,7 +579,6 @@ export async function getCreatorAnalytics(
         following: report.following,
         posts: report.posts,
         profile_url: report.profile_url,
-        profile_pic_url: report.profile_pic_url || null,
         avg_reel_views: String(report.avg_views),
         avg_likes: report.avg_likes,
         avg_comments: report.avg_comments,
@@ -597,6 +596,11 @@ export async function getCreatorAnalytics(
         visibility_status: false,
         last_fetched_at: new Date().toISOString(),
       };
+
+      if (report.profile_pic_url) {
+        upsertPayload.profile_image = report.profile_pic_url;
+        upsertPayload.profile_pic_url = report.profile_pic_url;
+      }
 
       const { error: upsertErr } = await supabase
         .from("creators")

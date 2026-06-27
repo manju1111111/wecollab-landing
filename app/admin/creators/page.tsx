@@ -9,6 +9,7 @@ import { QuickPreviewDrawer } from "@/components/admin/creators/quick-preview-dr
 import { AddCreatorModal } from "@/components/admin/creators/add-creator-modal";
 import { BulkAssignModal } from "@/components/admin/creators/bulk-assign-modal";
 import { createClient } from "@/lib/supabase/client";
+import { syncCreatorFilterAssignments } from "@/lib/instagram/classifier";
 
 function AdminCreatorsInner() {
   const searchParams = useSearchParams();
@@ -237,6 +238,9 @@ function AdminCreatorsInner() {
       
     if (inserted) {
       setCreators(prev => [inserted, ...prev]);
+      
+      // Sync manual creator taxonomy filter assignments
+      await syncCreatorFilterAssignments(supabase, inserted.id, inserted.tags || []);
 
       // Trigger notification if assigned to an employee
       if (inserted.assigned_employee) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { instaloaderService } from "@/lib/instagram/instaloader";
 import { createClient } from "@supabase/supabase-js";
+import { syncCreatorFilterAssignments } from "@/lib/instagram/classifier";
 
 // Allow up to 120 seconds for the sync to complete
 export const maxDuration = 120;
@@ -62,20 +63,35 @@ export async function POST(request: Request) {
       last_fetched_at: result.lastSyncTimestamp,
     };
 
-    // Only update profile_image if we got a real URL
-    if (profile.profile_pic_url) {
-      creatorsUpdate.profile_image = profile.profile_pic_url;
+    if (profile.tags) {
+      creatorsUpdate.tags = profile.tags;
+    }
+    if (profile.category) {
+      creatorsUpdate.category = profile.category;
     }
 
-    const { error: updateErr } = await supabase
+    // Keep the main creators table image columns in sync with the latest Instagram photo.
+    if (profile.profile_pic_url) {
+      creatorsUpdate.profile_image = profile.profile_pic_url;
+      creatorsUpdate.profile_pic_url = profile.profile_pic_url;
+    }
+
+    const { data: updatedRows, error: updateErr } = await supabase
       .from("creators")
       .update(creatorsUpdate)
-      .eq("username", username);
+      .eq("username", username)
+      .select("id")
+      .maybeSingle();
 
     if (updateErr) {
       console.warn(`[BACKGROUND_SYNC] Failed to back-populate creators table for @${username}:`, updateErr.message);
     } else {
       console.log(`[BACKGROUND_SYNC] Successfully back-populated creators table for @${username}`);
+      
+      // Update the filter assignments dynamically
+      if (updatedRows?.id && profile.tags) {
+        await syncCreatorFilterAssignments(supabase, updatedRows.id, profile.tags);
+      }
     }
 
     // Also update the Algolia index with the refreshed data

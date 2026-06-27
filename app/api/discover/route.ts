@@ -76,7 +76,10 @@ export async function POST(request: Request) {
 
         if (settled && "data" in settled && settled.data && settled.data.length > 0) {
           const imageMap = new Map(
-            settled.data.map((r: any) => [r.id, sanitizeImageForResponse(r.profile_image)])
+            settled.data.map((r: any) => [
+              r.id,
+              sanitizeImageForResponse(r.profile_image || r.profile_pic_url)
+            ])
           );
 
           results.hits = results.hits.map((hit: any) => {

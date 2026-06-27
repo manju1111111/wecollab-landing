@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Instagram integration
+
+The Python Instagram service uses Instaloader and reads credentials from environment variables:
+
+```bash
+INSTAGRAM_USERNAME=your_instagram_username
+INSTAGRAM_PASSWORD=your_instagram_password
+# Optional: override the default session directory
+INSTALOADER_SESSION_DIR=data/instagram_sessions
+```
+
+If the credentials are not provided, the service runs anonymously and never crashes the app.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
