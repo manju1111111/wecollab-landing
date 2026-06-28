@@ -58,7 +58,7 @@ export async function proxy(request: NextRequest) {
 
     if (isBrandLogin) {
       if (isValid) {
-        return NextResponse.redirect(new URL('/brand', request.url));
+        return NextResponse.redirect(new URL('/discover', request.url));
       }
       return NextResponse.next();
     }
