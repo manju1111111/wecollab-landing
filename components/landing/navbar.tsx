@@ -101,7 +101,12 @@ export function Navbar() {
       localStorage.removeItem("wecollab_admin_profile");
       document.cookie = "wecollab_admin_profile=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     } else if (session?.role === "brand") {
-      document.cookie = "brand_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      try {
+        const { logoutBrand } = await import("@/app/brand/actions");
+        await logoutBrand();
+      } catch (e) {
+        document.cookie = "brand_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
     } else if (session?.role === "employee") {
       try {
         const { logoutEmployee } = await import("@/app/employee/actions");
@@ -111,7 +116,7 @@ export function Navbar() {
       }
     }
     setSession(null);
-    window.location.reload();
+    window.location.href = "/";
   };
 
   useMotionValueEvent(scrollY, "change", (y) => {

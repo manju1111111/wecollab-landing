@@ -54,9 +54,9 @@ export default async function BrandLayout({ children }: { children: React.ReactN
 
   const logoutAction = async () => {
     "use server";
-    const { cookies } = await import("next/headers");
-    (await cookies()).delete("brand_session");
-    redirect("/brand/login");
+    const { logoutBrand } = await import("@/app/brand/actions");
+    await logoutBrand();
+    redirect("/");
   };
 
   return (

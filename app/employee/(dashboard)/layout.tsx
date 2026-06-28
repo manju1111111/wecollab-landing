@@ -55,9 +55,9 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
 
   const logoutAction = async () => {
     "use server";
-    const { cookies } = await import("next/headers");
-    (await cookies()).delete("employee_session");
-    redirect("/employee/login");
+    const { logoutEmployee } = await import("@/app/employee/actions");
+    await logoutEmployee();
+    redirect("/");
   };
 
   return (

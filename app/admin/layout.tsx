@@ -96,7 +96,7 @@ export default function AdminLayout({
     await supabase.auth.signOut();
     // Clear only device-local UI preferences
     localStorage.removeItem("wecollab_ui_prefs");
-    router.push("/admin/login");
+    router.push("/");
     router.refresh();
   };
 

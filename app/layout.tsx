@@ -31,11 +31,14 @@ export const metadata: Metadata = {
   },
 };
 
+import { validateEnv } from "@/lib/env-check";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  validateEnv();
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
